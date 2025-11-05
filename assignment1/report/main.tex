@@ -423,4 +423,145 @@ Comparing with \(\frac{\partial L}{\partial Z} = \alpha \mathbf{M}\), we identif
   \boxed{\mathbf{M} = Y - T}.
 \]
 
+
+\newpage
+\section*{Question 1a: Gradient w.r.t.\ the Weight Matrix \(W\)}
+
+Setup: \(Y = X W^\top + B\), where \(X \in \mathbb{R}^{S\times M}\), \(W \in \mathbb{R}^{N\times M}\), \(Y \in \mathbb{R}^{S\times N}\).
+
+\begin{align*}
+Y_{sn} &= \sum_{m=1}^{M} X_{sm} W_{nm} + b_n \\[0.5em]
+\frac{\partial L}{\partial W_{ij}}
+&= \sum_{s=1}^{S} \sum_{n=1}^{N}
+    \frac{\partial L}{\partial Y_{sn}}
+    \frac{\partial Y_{sn}}{\partial W_{ij}} \\[0.5em]
+\frac{\partial Y_{sn}}{\partial W_{ij}}
+&= \sum_{m=1}^{M} X_{sm} \frac{\partial W_{nm}}{\partial W_{ij}}
+= \sum_{m=1}^{M} X_{sm} \, \delta_{ni} \delta_{mj}
+= X_{sj} \, \delta_{ni} \\[0.5em]
+\frac{\partial L}{\partial W_{ij}}
+&= \sum_{s=1}^{S} \sum_{n=1}^{N}
+    \frac{\partial L}{\partial Y_{sn}}
+    X_{sj} \, \delta_{ni}
+= \sum_{s=1}^{S}
+    \frac{\partial L}{\partial Y_{si}} \, X_{sj}
+\end{align*}
+
+Result (recognizing as \((i,j)\)-entry of \(G^\top X\)):
+\[
+  \boxed{
+    \frac{\partial L}{\partial W}
+    = \left( \frac{\partial L}{\partial Y} \right)^{\!\top} X
+  }
+\]
+
+
+\section*{Question 1b: Gradient w.r.t.\ the Bias \(b\)}
+
+Setup: \(Y_{sn} = \sum_{m=1}^{M} X_{sm} W_{nm} + b_n\), where \(b \in \mathbb{R}^{1\times N}\).
+
+\begin{align*}
+\frac{\partial L}{\partial b_j}
+&= \sum_{s=1}^{S} \sum_{n=1}^{N}
+    \frac{\partial L}{\partial Y_{sn}}
+    \frac{\partial Y_{sn}}{\partial b_j} \\[0.5em]
+\frac{\partial Y_{sn}}{\partial b_j}
+&= \delta_{nj} \\[0.5em]
+\frac{\partial L}{\partial b_j}
+&= \sum_{s=1}^{S} \sum_{n=1}^{N}
+    \frac{\partial L}{\partial Y_{sn}} \, \delta_{nj}
+= \sum_{s=1}^{S}
+    \frac{\partial L}{\partial Y_{sj}}
+\end{align*}
+
+Result (summing over batch dimension):
+\[
+  \boxed{
+    \frac{\partial L}{\partial b}
+    = \mathbf{1}^\top \frac{\partial L}{\partial Y}
+  }
+\]
+
+
+\section*{Question 1c: Gradient w.r.t.\ the Input Features \(X\)}
+
+Setup: \(Y = X W^\top + B\), where \(Y_{tn} = \sum_{m=1}^{M} X_{tm} W_{nm} + b_n\).
+
+\begin{align*}
+\frac{\partial L}{\partial X_{si}}
+&= \sum_{t=1}^{S} \sum_{n=1}^{N}
+    \frac{\partial L}{\partial Y_{tn}}
+    \frac{\partial Y_{tn}}{\partial X_{si}} \\[0.5em]
+\frac{\partial Y_{tn}}{\partial X_{si}}
+&= \sum_{m=1}^{M} W_{nm} \frac{\partial X_{tm}}{\partial X_{si}}
+= \sum_{m=1}^{M} W_{nm} \, \delta_{ts} \, \delta_{mi}
+= W_{ni} \, \delta_{ts} \\[0.5em]
+\frac{\partial L}{\partial X_{si}}
+&= \sum_{t=1}^{S} \sum_{n=1}^{N}
+    \frac{\partial L}{\partial Y_{tn}}
+    W_{ni} \, \delta_{ts}
+= \sum_{n=1}^{N}
+    \frac{\partial L}{\partial Y_{sn}} \, W_{ni}
+\end{align*}
+
+Result (recognizing as \((s,i)\)-entry of \(GW\)):
+\[
+  \boxed{
+    \frac{\partial L}{\partial X}
+    = \frac{\partial L}{\partial Y} \, W
+  }
+\]
+
+
+\section*{Question 1d: Gradient w.r.t.\ the Input of an Activation Module}
+
+Setup: \(Y = h(X)\) element-wise, so \(Y_{ij} = h(X_{ij})\).
+
+\begin{align*}
+\frac{\partial L}{\partial X_{ij}}
+&= \sum_{k=1}^{S} \sum_{\ell=1}^{D}
+    \frac{\partial L}{\partial Y_{k\ell}}
+    \frac{\partial Y_{k\ell}}{\partial X_{ij}} \\[0.5em]
+\frac{\partial Y_{k\ell}}{\partial X_{ij}}
+&= h'(X_{ij}) \, \delta_{ki} \, \delta_{\ell j} \quad \text{(element-wise activation)} \\[0.5em]
+\frac{\partial L}{\partial X_{ij}}
+&= \sum_{k=1}^{S} \sum_{\ell=1}^{D}
+    \frac{\partial L}{\partial Y_{k\ell}}
+    h'(X_{ij}) \, \delta_{ki} \, \delta_{\ell j}
+= \frac{\partial L}{\partial Y_{ij}} \, h'(X_{ij})
+\end{align*}
+
+Result:
+\[
+  \boxed{
+    \frac{\partial L}{\partial X}
+    = \frac{\partial L}{\partial Y} \;\odot\; h'(X)
+  }
+\]
+
+
+\section*{Question 1e: Softmax and Loss Modules}
+
+Setup: Softmax \(Y_{ij} = \frac{e^{Z_{ij}}}{\sum_{k=1}^{C} e^{Z_{ik}}}\), cross-entropy \(L_i = - \sum_{k=1}^{C} T_{ik} \log Y_{ik}\), mean loss \(L = \frac{1}{S} \sum_{i=1}^{S} L_i\).
+
+Given: \(\frac{\partial L}{\partial Y} = -\frac{1}{S}\frac{T}{Y}\) and \(\frac{\partial L}{\partial Z} = Y \circ \left( \frac{\partial L}{\partial Y} - ((\frac{\partial L}{\partial Y} \circ Y)\mathbf{1}) \mathbf{1}^{\!\top} \right)\).
+
+\begin{align*}
+G_{ij} &= \left(\frac{\partial L}{\partial Y}\right)_{ij} = -\frac{1}{S}\frac{T_{ij}}{Y_{ij}} \\[0.5em]
+(G \circ Y)_{ij} &= G_{ij} Y_{ij} = -\frac{1}{S} T_{ij} \\[0.5em]
+\bigl((G \circ Y)\mathbf{1}\bigr)_i &= \sum_{j=1}^{C} (G \circ Y)_{ij} = -\frac{1}{S} \sum_{j=1}^{C} T_{ij} = -\frac{1}{S} \quad \text{(rows of } T \text{ sum to 1)} \\[0.5em]
+\bigl((G \circ Y)\mathbf{1}\,\mathbf{1}^{\!\top}\bigr)_{ij} &= -\frac{1}{S} \\[0.5em]
+\left(G - (G \circ Y)\mathbf{1}\,\mathbf{1}^{\!\top}\right)_{ij} &= -\frac{1}{S}\frac{T_{ij}}{Y_{ij}} + \frac{1}{S} \\[0.5em]
+\left(\frac{\partial L}{\partial Z}\right)_{ij} &= Y_{ij} \left(-\frac{1}{S}\frac{T_{ij}}{Y_{ij}} + \frac{1}{S}\right) = -\frac{1}{S} T_{ij} + \frac{1}{S} Y_{ij} = \frac{1}{S}(Y_{ij} - T_{ij})
+\end{align*}
+
+Result:
+\[
+  \boxed{
+    \frac{\partial L}{\partial Z} = \frac{1}{S}(Y - T)
+  }
+\]
+
+So \(\boxed{\alpha = \frac{1}{S}}\) and \(\boxed{\mathbf{M} = Y - T}\).
+
 \end{document}
