@@ -1,0 +1,426 @@
+\documentclass[a4paper,11pt]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\begin{document}
+
+\section*{Question 1a: Gradient w.r.t.\ the Weight Matrix \(W\)}
+
+We use the conventions from the notes:
+
+\begin{itemize}
+  \item Batch size: \(S\), input dimension: \(M\), output dimension: \(N\).
+  \item Input features: \(X \in \mathbb{R}^{S\times M}\).
+  \item Weights: \(W \in \mathbb{R}^{N\times M}\).
+  \item Bias row vector: \(b \in \mathbb{R}^{1\times N}\), tiled to
+        \(B \in \mathbb{R}^{S\times N}\).
+  \item Output features:
+  \[
+    Y = X W^\top + B \in \mathbb{R}^{S\times N},
+  \]
+  so in indices
+  \[
+    Y_{sn} = \sum_{m=1}^{M} X_{sm} W_{nm} + b_n.
+  \]
+\end{itemize}
+
+Let \(L\) be a scalar loss depending on \(Y\).  
+We want a closed–form expression for \(\frac{\partial L}{\partial W}\) in terms
+of the gradient \(\frac{\partial L}{\partial Y}\).
+
+\subsection*{Index-wise derivation}
+
+By the chain rule,
+\[
+  \frac{\partial L}{\partial W_{ij}}
+  = \sum_{s=1}^{S} \sum_{n=1}^{N}
+      \frac{\partial L}{\partial Y_{sn}}
+      \frac{\partial Y_{sn}}{\partial W_{ij}} .
+\]
+
+From
+\[
+  Y_{sn} = \sum_{m=1}^{M} X_{sm} W_{nm} + b_n,
+\]
+we obtain
+\[
+  \frac{\partial Y_{sn}}{\partial W_{ij}}
+  = \sum_{m=1}^{M} X_{sm} \frac{\partial W_{nm}}{\partial W_{ij}}
+  = \sum_{m=1}^{M} X_{sm} \, \delta_{ni} \delta_{mj}
+  = X_{sj} \, \delta_{ni},
+\]
+where \(\delta_{ab}\) is the Kronecker delta.
+
+Plugging this into the chain rule:
+\[
+  \frac{\partial L}{\partial W_{ij}}
+  = \sum_{s=1}^{S} \sum_{n=1}^{N}
+      \frac{\partial L}{\partial Y_{sn}}
+      X_{sj} \, \delta_{ni}
+  = \sum_{s=1}^{S}
+      \frac{\partial L}{\partial Y_{si}} \, X_{sj}.
+\]
+
+\subsection*{Matrix form}
+
+Let \(G = \frac{\partial L}{\partial Y} \in \mathbb{R}^{S\times N}\).  
+The previous line says
+\[
+  \left(\frac{\partial L}{\partial W}\right)_{ij}
+  = \sum_{s=1}^{S} G_{si} X_{sj},
+\]
+which is exactly the \((i,j)\)-entry of the matrix product \(G^\top X\).  
+Therefore, in compact matrix notation,
+\[
+  \boxed{
+    \frac{\partial L}{\partial W}
+    = \left( \frac{\partial L}{\partial Y} \right)^{\!\top} X
+  }
+\]
+which has the same shape \(N \times M\) as \(W\), as required.
+
+\section*{Question 1b: Gradient w.r.t.\ the Bias \(b\)}
+
+Recall that the output features are
+\[
+  Y = X W^\top + B \in \mathbb{R}^{S\times N},
+\]
+where the bias row vector \(b \in \mathbb{R}^{1\times N}\) is tiled \(S\) times to form
+\(B \in \mathbb{R}^{S\times N}\).  In indices,
+\[
+  Y_{sn} = \sum_{m=1}^{M} X_{sm} W_{nm} + b_n.
+\]
+
+We want a closed–form expression for the gradient of the loss \(L\) with respect to
+\(b\).
+
+\subsection*{Index-wise derivation}
+
+Using the chain rule,
+\[
+  \frac{\partial L}{\partial b_j}
+  = \sum_{s=1}^{S} \sum_{n=1}^{N}
+      \frac{\partial L}{\partial Y_{sn}}
+      \frac{\partial Y_{sn}}{\partial b_j}.
+\]
+
+From the expression for \(Y_{sn}\),
+\[
+  \frac{\partial Y_{sn}}{\partial b_j}
+  = \frac{\partial}{\partial b_j}
+      \left( \sum_{m=1}^{M} X_{sm} W_{nm} + b_n \right)
+  = \delta_{nj},
+\]
+so
+\[
+  \frac{\partial L}{\partial b_j}
+  = \sum_{s=1}^{S} \sum_{n=1}^{N}
+      \frac{\partial L}{\partial Y_{sn}} \, \delta_{nj}
+  = \sum_{s=1}^{S}
+      \frac{\partial L}{\partial Y_{sj}}.
+\]
+
+\subsection*{Matrix form}
+
+Let \(G = \frac{\partial L}{\partial Y} \in \mathbb{R}^{S\times N}\) and let
+\(\mathbf{1} \in \mathbb{R}^{S\times 1}\) denote the column vector of ones.
+Then the previous line says that each component of \(\frac{\partial L}{\partial b}\)
+is the sum over the corresponding column of \(G\), which we can write as
+\[
+  \boxed{
+    \frac{\partial L}{\partial b}
+    = \mathbf{1}^\top \frac{\partial L}{\partial Y}
+  }
+\]
+where \(\frac{\partial L}{\partial b} \in \mathbb{R}^{1\times N}\), matching the
+shape of \(b\).
+
+\newpage
+\section*{Question 1c: Gradient w.r.t.\ the Input Features \(X\)}
+
+We again start from the linear transformation
+\[
+  Y = X W^\top + B, \quad
+  \text{where } X \in \mathbb{R}^{S\times M}, \;
+  W \in \mathbb{R}^{N\times M}, \;
+  B \in \mathbb{R}^{S\times N}.
+\]
+
+We wish to derive a closed–form expression for
+\(\frac{\partial L}{\partial X}\) in terms of
+\(\frac{\partial L}{\partial Y}\).
+
+\subsection*{Index-wise derivation}
+
+Let us first allow for the general possibility that the output
+entries \(Y_{t n}\) could depend on \emph{all} rows of \(X\).
+Then, by the chain rule,
+\[
+  \frac{\partial L}{\partial X_{s i}}
+  = \sum_{t=1}^{S} \sum_{n=1}^{N}
+      \frac{\partial L}{\partial Y_{t n}}
+      \frac{\partial Y_{t n}}{\partial X_{s i}} .
+\]
+In the most general case, one would need to consider the cross–sample
+interactions between \(X_{s}\) and \(Y_{t}\).
+However, in a standard linear module, the output at row \(t\)
+depends \emph{only} on the input features of the same sample \(t\),
+since
+\[
+  Y_{t n}
+  = \sum_{m=1}^{M} X_{t m} W_{n m} + b_n.
+\]
+Taking the partial derivative gives
+\[
+  \frac{\partial Y_{t n}}{\partial X_{s i}}
+  = \sum_{m=1}^{M} W_{n m} \frac{\partial X_{t m}}{\partial X_{s i}}
+  = \sum_{m=1}^{M} W_{n m} \, \delta_{ts} \, \delta_{mi}
+  = W_{n i} \, \delta_{ts}.
+\]
+
+Substituting this result back into the chain rule collapses the sum over \(t\):
+\[
+  \frac{\partial L}{\partial X_{s i}}
+  = \sum_{t=1}^{S} \sum_{n=1}^{N}
+      \frac{\partial L}{\partial Y_{t n}}
+      W_{n i} \, \delta_{ts}
+  = \sum_{n=1}^{N}
+      \frac{\partial L}{\partial Y_{s n}} \, W_{n i}.
+\]
+
+\subsection*{Matrix form}
+
+Let \(G = \frac{\partial L}{\partial Y} \in \mathbb{R}^{S\times N}\).
+The above expression corresponds to
+\[
+  \left( \frac{\partial L}{\partial X} \right)_{s i}
+  = \sum_{n=1}^{N} G_{s n} W_{n i},
+\]
+which is precisely the \((s,i)\)-entry of \(G W\).  
+Hence, in compact form:
+\[
+  \boxed{
+    \frac{\partial L}{\partial X}
+    = \frac{\partial L}{\partial Y} \, W
+  }
+\]
+where \(\frac{\partial L}{\partial X} \in \mathbb{R}^{S\times M}\), matching the
+shape of \(X\).
+
+\bigskip
+\noindent
+Intuitively, this shows that each sample’s gradient with respect to
+its input features depends only on its own row of
+\(\frac{\partial L}{\partial Y}\), confirming that batch elements
+are independent in the linear module.
+
+
+\section*{Question 1d: Gradient w.r.t.\ the Input of an Activation Module}
+
+Consider an element–wise activation function \(h\).  
+The activation module takes input features \(X\) and produces output features \(Y\) via
+\[
+  Y = h(X),
+\]
+that is, in indices
+\[
+  Y_{ij} = h(X_{ij}).
+\]
+Here \(X\) and \(Y\) have the same shape, say \(X, Y \in \mathbb{R}^{S\times D}\)
+(for some feature dimension \(D\); the exact value does not matter).
+
+We want a closed–form expression for the gradient
+\(\frac{\partial L}{\partial X}\) in terms of the gradient
+\(\frac{\partial L}{\partial Y}\) provided by the next module.
+
+\subsection*{Index-wise derivation}
+
+Start from the most general chain rule where each entry of \(Y\) could, in
+principle, depend on all entries of \(X\):
+\[
+  \frac{\partial L}{\partial X_{ij}}
+  = \sum_{k=1}^{S} \sum_{\ell=1}^{D}
+      \frac{\partial L}{\partial Y_{k\ell}}
+      \frac{\partial Y_{k\ell}}{\partial X_{ij}}.
+\]
+
+However, in an \emph{element–wise} activation module, each output entry
+\(Y_{k\ell}\) depends only on the corresponding input entry \(X_{k\ell}\):
+\[
+  Y_{k\ell} = h\bigl(X_{k\ell}\bigr).
+\]
+Thus
+\[
+  \frac{\partial Y_{k\ell}}{\partial X_{ij}}
+  = h'\bigl(X_{ij}\bigr) \, \delta_{ki} \, \delta_{\ell j},
+\]
+where \(h'\) is the derivative of \(h\) and \(\delta_{ab}\) is the Kronecker
+delta.  Substituting this back into the chain rule collapses both sums:
+\[
+  \frac{\partial L}{\partial X_{ij}}
+  = \sum_{k=1}^{S} \sum_{\ell=1}^{D}
+      \frac{\partial L}{\partial Y_{k\ell}}
+      h'\bigl(X_{ij}\bigr) \, \delta_{ki} \, \delta_{\ell j}
+  = \frac{\partial L}{\partial Y_{ij}} \, h'\bigl(X_{ij}\bigr).
+\]
+
+\subsection*{Matrix form (Hadamard product)}
+
+Define
+\[
+  G := \frac{\partial L}{\partial Y}
+  \quad\text{and}\quad
+  H := h'(X),
+\]
+where \(H\) is obtained by applying \(h'\) element–wise to \(X\),
+so \(H_{ij} = h'(X_{ij})\).  
+The index-wise result above then reads
+\[
+  \left(\frac{\partial L}{\partial X}\right)_{ij}
+  = G_{ij} \, H_{ij},
+\]
+which is exactly the Hadamard (element–wise) product of \(G\) and \(H\).
+
+Using the symbol \(\odot\) for the Hadamard product, we obtain the compact
+closed–form expression
+\[2
+  \boxed{
+    \frac{\partial L}{\partial X}
+    = \frac{\partial L}{\partial Y} \;\odot\; h'(X)
+  }
+\]
+where all tensors have the same shape as \(X\) and \(Y\).
+
+
+\section*{Question 1e: Softmax and Loss Modules}
+
+Let \(Z \in \mathbb{R}^{S\times C}\) be the feature matrix at the end of a deep
+network. A softmax layer produces
+\[
+  Y_{ij}
+  = \frac{e^{Z_{ij}}}{\sum_{k=1}^{C} e^{Z_{ik}}}, 
+  \qquad Y \in \mathbb{R}^{S\times C},
+\]
+followed by a categorical cross–entropy loss.  
+Targets are collected in \(T \in \mathbb{R}^{S\times C}\), with each row of \(T\)
+summing to \(1\).
+
+The scalar loss is the mean over samples:
+\[
+  L = \frac{1}{S} \sum_{i=1}^{S} L_i,
+  \qquad
+  L_i = - \sum_{k=1}^{C} T_{ik} \log Y_{ik}.
+\]
+
+We are given the following gradients for the softmax and loss modules:
+\[
+  \frac{\partial L}{\partial Z}
+    = Y \circ \left(
+        \frac{\partial L}{\partial Y}
+        - \bigl(\left(\tfrac{\partial L}{\partial Y} \circ Y\right)\mathbf{1}\bigr)
+          \mathbf{1}^{\!\top}
+      \right),
+\]
+\[
+  \frac{\partial L}{\partial Y}
+    = -\,\frac{1}{S}\,\frac{T}{Y},
+\]
+where \(\circ\) and the fraction \(\tfrac{T}{Y}\) denote element–wise operations,
+and \(\mathbf{1}\) is an all–ones column vector of suitable length.
+
+We want to rewrite \(\frac{\partial L}{\partial Z}\) in the form
+\[
+  \frac{\partial L}{\partial Z} = \alpha \mathbf{M},
+\]
+for some \(\alpha \in \mathbb{R}^+\) and \(\mathbf{M} \in \mathbb{R}^{S\times C}\),
+expressed in terms of \(Y, T\) and \(S\).
+
+\subsection*{Step 1: Simplify \(\displaystyle \frac{\partial L}{\partial Y}\)}
+
+In indices, the given loss gradient is
+\[
+  \left(\frac{\partial L}{\partial Y}\right)_{ij}
+  = -\,\frac{1}{S}\,\frac{T_{ij}}{Y_{ij}}.
+\]
+Let us set
+\[
+  G := \frac{\partial L}{\partial Y},
+\]
+so
+\[
+  G_{ij} = -\,\frac{1}{S}\,\frac{T_{ij}}{Y_{ij}}.
+\]
+
+\subsection*{Step 2: Compute \(G \circ Y\) and the row sums}
+
+First,
+\[
+  (G \circ Y)_{ij}
+  = G_{ij} Y_{ij}
+  = -\,\frac{1}{S}\,\frac{T_{ij}}{Y_{ij}}\,Y_{ij}
+  = -\,\frac{1}{S}\,T_{ij}.
+\]
+
+Now consider the matrix--vector product \((G \circ Y)\mathbf{1}\).
+For each row \(i\),
+\[
+  \bigl((G \circ Y)\mathbf{1}\bigr)_i
+  = \sum_{j=1}^{C} (G \circ Y)_{ij}
+  = \sum_{j=1}^{C} \left(-\,\frac{1}{S}\,T_{ij}\right)
+  = -\,\frac{1}{S} \sum_{j=1}^{C} T_{ij}
+  = -\,\frac{1}{S},
+\]
+since each row of \(T\) sums to \(1\).  
+Thus
+\[
+  (G \circ Y)\mathbf{1}
+  = -\,\frac{1}{S}\,\mathbf{1},
+\]
+and therefore
+\[
+  \bigl( (G \circ Y)\mathbf{1}\, \mathbf{1}^{\!\top} \bigr)_{ij}
+  = -\,\frac{1}{S}
+\]
+for every \(i,j\).  This is simply the \(S \times C\) matrix with all entries
+equal to \(-\tfrac{1}{S}\).
+
+\subsection*{Step 3: Plug into \(\frac{\partial L}{\partial Z}\)}
+
+We have
+\[
+  \left(
+    G - (G \circ Y)\mathbf{1}\,\mathbf{1}^{\!\top}
+  \right)_{ij}
+  = G_{ij} - \left(-\,\frac{1}{S}\right)
+  = -\,\frac{1}{S}\,\frac{T_{ij}}{Y_{ij}}
+    + \frac{1}{S}.
+\]
+Multiplying element–wise by \(Y\) gives
+\[
+  \left(\frac{\partial L}{\partial Z}\right)_{ij}
+  = Y_{ij} \left(
+      -\,\frac{1}{S}\,\frac{T_{ij}}{Y_{ij}}
+      + \frac{1}{S}
+    \right)
+  = -\,\frac{1}{S} T_{ij}
+    + \frac{1}{S} Y_{ij}
+  = \frac{1}{S} \left( Y_{ij} - T_{ij} \right).
+\]
+
+Hence, in matrix form,
+\[
+  \boxed{
+    \frac{\partial L}{\partial Z}
+    = \frac{1}{S}\,(Y - T)
+  }.
+\]
+
+Comparing with \(\frac{\partial L}{\partial Z} = \alpha \mathbf{M}\), we identify
+\[
+  \boxed{\alpha = \frac{1}{S}},
+  \qquad
+  \boxed{\mathbf{M} = Y - T}.
+\]
+
+\end{document}
