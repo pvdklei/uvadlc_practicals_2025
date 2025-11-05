@@ -240,8 +240,7 @@ class SoftMaxModule(object):
     """
 
     def __init__(self):
-        self.exp_x = None
-        self.sum_exp_x = None
+        self.out = None
 
     def forward(self, x):
         """
@@ -267,9 +266,7 @@ class SoftMaxModule(object):
         sum_exp_x = np.sum(exp_x, axis=1, keepdims=True)
         out = exp_x / sum_exp_x
 
-        self.x = x
-        self.exp_x = exp_x
-        self.sum_exp_x = sum_exp_x
+        self.out = out
 
         #######################
         # END OF YOUR CODE    #
@@ -293,13 +290,9 @@ class SoftMaxModule(object):
         # PUT YOUR CODE HERE  #
         #######################
 
-        assert self.exp_x is not None, "Cannot backpropagate before calling forward."
-        assert self.sum_exp_x is not None, "Cannot backpropagate before calling forward."
+        assert self.out is not None, "Cannot backpropagate before calling forward."
 
-        dxdy = - (self.exp_x[:, :, np.newaxis] * self.exp_x[:, np.newaxis, :]) / (self.sum_exp_x[:, :, np.newaxis] ** 2) 
-        diag_dxdy = self.exp_x / self.sum_exp_x 
-        dxdy += np.eye(dout.shape[1])[np.newaxis, :, :] * diag_dxdy[:, :, np.newaxis]
-        dx = np.sum(dxdy * dout[:, :, np.newaxis], axis=1)
+        dx = self.out * (dout - np.sum(dout * self.out, axis=1, keepdims=True))
 
         #######################
         # END OF YOUR CODE    # 
@@ -319,8 +312,7 @@ class SoftMaxModule(object):
         # PUT YOUR CODE HERE  #
         #######################
 
-        self.exp_x = None
-        self.sum_exp_x = None
+        self.out = None
 
         #######################
         # END OF YOUR CODE    #
@@ -351,8 +343,9 @@ class CrossEntropyModule(object):
 
         y_one_hot = np.zeros_like(x)
         y_one_hot[np.arange(x.shape[0]), y] = 1
+        eps = 1e-15  # small constant to avoid log(0)
 
-        out = - np.sum(np.log(x) * y_one_hot) / x.shape[0]
+        out = - np.sum(np.log(x + eps) * y_one_hot) / x.shape[0]
 
         #######################
         # END OF YOUR CODE    #
