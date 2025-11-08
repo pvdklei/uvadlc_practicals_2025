@@ -27,7 +27,6 @@ from torch.utils.data import DataLoader
 from torch.utils.data import random_split
 from torchvision import transforms
 
-
 def get_dataloader(dataset, batch_size, return_numpy=False) -> dict[typing.Literal["train", "validation", "test"], DataLoader]:
     collate_fn = numpy_collate_fn if return_numpy else None
     train_dataloader      = DataLoader(dataset=dataset["train"], batch_size=batch_size, shuffle=True, drop_last=True,

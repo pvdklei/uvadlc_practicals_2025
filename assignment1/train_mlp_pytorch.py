@@ -232,6 +232,7 @@ def train(hidden_dims: list[int], lr: float, use_batch_norm: bool, batch_size: i
         "seed": seed,
         "training_losses": training_losses,
     }
+
     #######################
     # END OF YOUR CODE    #
     #######################

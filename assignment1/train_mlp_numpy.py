@@ -31,7 +31,6 @@ from mlp_numpy import MLP
 from modules import CrossEntropyModule, LinearModule
 import cifar10_utils
 import utils
-
 import torch
 
 
@@ -79,7 +78,7 @@ def evaluate_model(model, data_loader: torch.utils.data.DataLoader) -> float:
     TODO:
     Implement evaluation of the MLP model on a given dataset.
 
-    Hint: make sure to return the average accuracy of the whole dataset,
+    Hint: make sure to return the average accuracy of the whole dataset, 
           independent of batch sizes (not all batches might be the same size).
     """
 
@@ -127,15 +126,15 @@ def train(hidden_dims: list[int], lr: float, batch_size: int, epochs: int, seed:
       model: An instance of 'MLP', the trained model that performed best on the validation set.
       val_accuracies: A list of scalar floats, containing the accuracies of the model on the
                       validation set per epoch (element 0 - performance after epoch 1)
-      test_accuracy: scalar float, average accuracy on the test dataset of the model that
+      test_accuracy: scalar float, average accuracy on the test dataset of the model that 
                      performed best on the validation. Between 0.0 and 1.0
-      logging_dict: An arbitrary object containing logging information. This is for you to
+      logging_dict: An arbitrary object containing logging information. This is for you to 
                     decide what to put in here.
 
     TODO:
-    - Implement the training of the MLP model.
+    - Implement the training of the MLP model. 
     - Evaluate your model on the whole validation set each epoch.
-    - After finishing training, evaluate your model that performed best on the validation set,
+    - After finishing training, evaluate your model that performed best on the validation set, 
       on the whole test dataset.
     - Integrate _all_ input arguments of this function in your training. You are allowed to add
       additional input argument if you assign it a default value that represents the plain training

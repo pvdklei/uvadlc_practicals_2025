@@ -160,7 +160,7 @@ class MLP(object):
         #######################
         # PUT YOUR CODE HERE  #
         #######################
-        
+
         for layer in self.layers:
             layer.clear_cache()
 

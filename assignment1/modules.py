@@ -44,6 +44,7 @@ class LinearModule(object):
 
         # Note: For the sake of this assignment, please store the parameters
         # and gradients in this format, otherwise some unit tests might fail.
+
         self.params: dict[str, np.ndarray | None] = {'weight': None, 'bias': None} # Model parameters
         self.grads: dict[str, np.ndarray | None] = {'weight': None, 'bias': None} # Gradients
 
