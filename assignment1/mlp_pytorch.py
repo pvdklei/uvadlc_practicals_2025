@@ -69,6 +69,17 @@ class MLP(nn.Module):
         
         layers = []
 
+        # I am aware that I used a diffent Kaiming initialization here than in the numpy version.
+        # First difference is uniform vs gaussian, but since the exercise didn't specify which one to use,
+        # I guess both are acceptable. 
+        # Second difference is that here I looked at what non-linearity is used **after** the linear layer,
+        # while in the numpy version I looked at what non-linearity is used **before** the linear layer.
+        # Pytorch explanations seem to suggest this way is usually done, but the slides (and the is_input_layer
+        # argument in the numpy version) suggest the other way. Again, since the exercise didn't specify which one to use,
+        # I guess both are acceptable.
+        # I'm also quite unsure about my use of nonlinearity='leaky_relu' for ELU here, since ELU is not an 
+        # option, I thought leaky_relu is the closest to ELU. But IDK. 
+
         if not n_hidden:
             # Direct input to output for logistic regression
             layers.append(nn.Linear(n_inputs, n_classes))

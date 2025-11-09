@@ -219,7 +219,37 @@ Figure~\ref{fig:mlp_pytorch_results}, and you can view the training losses and
 validation accuracies per epoch in Figures~\ref{fig:mlp_pytorch_accuracies} and
 \ref{fig:mlp_pytorch_training_loss} respectively.
 
-As you can see we got a final test accuracy of 50.23\% on the best model.
+As you can see we got a final test accuracy of 50.23\% on the best model. This is a bit 
+better than the Numpy implementation (49.02\%), so I did some investigation on what the 
+difference could be. The first difference is that for Numpy I used a Kaiming Guassian
+initialization for the weights, while for PyTorch I used the Kaiming Uniform initialization.
+So though both have the same variance, the distributions are different. The exercise 
+did not specify which one to use, so I left them as is since I already did the experiments
+with these initializations. 
+
+Another difference is that in the Numpy implementation follows that you should use the
+Kaiming initialization based on what activation function is used \textit{before} the layer.
+So for the first layer, which has no activation function before it, I used a Xavier initialization.
+
+But for the PyTorch implementation I did it based on the activation function \textit{after} the layer.
+So for the last layer, which has no activation function after it, I used a Xavier initialization. I did 
+this because this seems to be the more common practise (tutorials, explanations, docs). Though the slides, 
+and the theory would suggest that you should look at the activation function before the layer. I did some 
+research on this and both approaches get the job done, they both keep the variance of the activations stable
+across layers, though there might be some small differences. So I decided to leave it as is, since the
+exercise did not specify which approach to use specifically, and it gives a nice opportunity to discuss this in the report.
+
+But, anyways, from my understanding of the theory and the derivation for this, it should be based on the 
+activation function before the layer. The theory says we want $Var(a_l) = Var(a_{l-1})$, where 
+$l_a = W_l x_{l-1} + b_l$ and $x_{l-1} = h(a_{l-1})$. So if $h$ is ReLU we need the Kaiming initialization
+for $W_l$ to keep the variance stable. So it depends on what $h$ is, which is the activation function
+before the layer. So I think the Numpy approach is more correct from a theoretical perspective.
+
+Looking back at it now, I'm also unsure about which linearity to pick in the nn.init.kaiming\_uniform\_ function.
+I initially chose leaky relu since ELU is similar to leaky relu in that it has a non-zero gradient for negative inputs.
+But I'm very unsure at the moment. 
+
+But let me please know if I misunderstood something here.
 
 \begin{figure}
     \verbatiminput{mlp_pytorch_q3/results.json}
@@ -274,7 +304,7 @@ Substituting this into the Taylor expansion gives us
          & = f(x_{min}) + \frac{1}{2} \sum_{i,j} \alpha_i \alpha_j v_i^\top H v_j + R_2(x)                                                                      \\
          & = f(x_{min}) + \frac{1}{2} \sum_{i,j} \alpha_i \alpha_j v_i^\top \lambda_j v_j + R_2(x)                      & (Hv = \lambda v)                      \\
          & = f(x_{min}) + \frac{1}{2} \sum_{i,j} \alpha_i \alpha_j \lambda_j v_i^\top v_j + R_2(x)                                                              \\
-         & = f(x_{min}) + \frac{1}{2} \sum_{i} \alpha_i^2 \lambda_i + R_2(x)                                            & (v_i \perp v_j \text{ for } i \neq j)
+         & = f(x_{min}) + \frac{1}{2} \sum_{i} \alpha_i^2 \lambda_i + R_2(x)                                            & (v_i \cdot v_j = 0 \text{ for } i \neq j \text{, else } 1) \\
 \end{align*}
 
 Since its a local minimum, we now that any $x$ in the closest neighborhood of
@@ -361,6 +391,16 @@ stuck at the saddle point, even though it is not even a local minimum. Almost
 like being stuck at a local minimum, but worse since we are not even at a
 minimum.
 
+Even when the training doesn't cause the parameters to be exactly at the
+saddle point, the gradient near the saddle point can be very small, leading to
+very small updates. Moreover, the curvature of the loss surface near the saddle point can be
+very different in different directions. In directions corresponding to
+positive eigenvalues of the Hessian, the loss surface curves upwards, so even when 
+it looks like the gradient is descending in that direction, it might actually be
+ascending due to the curvature. In directions where the curvature is very small
+the gradient will not change much, and since it was already small near the saddle
+point, it will remain small, leading to slow progress in those directions.
+
 \newpage
 
 \section*{Question 5a: Backpropagation through Batch Normalization}
@@ -389,6 +429,17 @@ compute the derivatives of the loss \(L\) with respect to the parameters
     \frac{\partial L}{\partial \gamma_i}
      & = \sum_{j} \frac{\partial L}{\partial y_j} x_j \, \delta_{ij}                     \\[0.5em]
      & = \frac{\partial L}{\partial y_i} x_i
+\end{align*}
+
+But in practise you would compute these gradients over a mini-batch of size
+\(S\), and since every sample in the batch uses the same \(\beta_i\) and \(\gamma_i\), 
+you would sum over the mini-batch samples:
+
+\begin{align*}
+    \frac{\partial L}{\partial \beta_i}
+     & = \sum_{s} \sum_{j} \frac{\partial L}{\partial y_{sj}} \, \delta_{ij} = \sum_{s} \frac{\partial L}{\partial y_{si}} \\[1em]
+    \frac{\partial L}{\partial \gamma_i}
+     & = \sum_{s} \sum_{j} \frac{\partial L}{\partial y_{sj}} x_{sj} \, \delta_{ij} = \sum_{s} \frac{\partial L}{\partial y_{si}} x_{si}
 \end{align*}
 
 \section*{Question 5b: Batch Normalization Parameters}
@@ -474,9 +525,7 @@ input to the ReLU neuron to have zero mean and unit variance. This means that
 the input to the ReLU neuron will be distributed around zero, with roughly half
 of the inputs being positive and half being negative. So the neuron will always
 have some positive inputs, leading to non-zero outputs and gradients during
-backpropagation. So it is not dead anymore. It is not anymore a `neuron that
-outputs the same value for any (expected) input`. It is now a neuron that
-outputs the same value for half of the inputs.
+backpropagation. 
 
 Even for other activation functions like Tanh or Sigmoid, this helps. The
 gradient of these activation functions is never really zero, but at very large
@@ -497,9 +546,9 @@ region where the gradients are significant.
 % why these observations make sense.
 
 Including batch normalization after the hidden layer in the PyTorch MLP did not
-improve the final test accuracy compared to the original setting without batch
-normalization. Both configurations achieved a final test accuracy of
-exactly 50.00\%. 
+improve the final test accuracy a lot compared to the original setting without batch
+normalization. Without batch normalization, the model achieved a final test accuracy of
+exactly 50.23\%, and with batch normalization it achieved a final test accuracy of 50.25\%.
 
 You can see the results in Figure~\ref{fig:mlp_pytorch_q5f_results}, and the
 training losses and validation accuracies per epoch in
