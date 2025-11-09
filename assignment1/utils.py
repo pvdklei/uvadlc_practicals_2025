@@ -1,3 +1,4 @@
+from datetime import datetime
 import os
 from typing import TypedDict
 import numpy as np
@@ -5,15 +6,24 @@ import matplotlib.pyplot as plt
 import json
 
 
-def output_dir(name: str) -> str:
+def output_dir(model_name: str, tag: str) -> str:
     """Creates output directory if it does not exist."""
     this_file_dir = os.path.dirname(os.path.abspath(__file__))
-    directory = os.path.join(this_file_dir, "output", name)
+    folder_name = f"{model_name}_{_format_tag(tag)}_{_format_timestamp()}"
+    directory = os.path.join(this_file_dir, "output", folder_name)
 
     if not os.path.exists(directory):
         os.makedirs(directory)
 
     return directory
+
+def _format_timestamp() -> str:
+    return datetime.now().strftime("%Y%m%d_%H%M%S")
+
+def _format_tag(tag: str) -> str:
+    if tag:
+        return tag
+    return "notag"
 
 
 def save_accuracies_plot(
@@ -90,14 +100,15 @@ def save_results(
         os.makedirs(output_dir)
 
     data = {
-        "val_accuracies": val_accuracies,
         "test_accuracy": test_accuracy,
-        "training_losses": logging_dict["training_losses"],
         "learning_rate": logging_dict["learning_rate"],
         "batch_size": logging_dict["batch_size"],
         "hidden_dims": logging_dict["hidden_dims"],
+        "use_batch_norm": logging_dict["use_batch_norm"], 
         "epochs": logging_dict["epochs"],
         "seed": logging_dict["seed"],
+        "val_accuracies": val_accuracies,
+        "training_losses": logging_dict["training_losses"],
     }
 
     with open(os.path.join(output_dir, "results.json"), "w") as f:

@@ -263,15 +263,27 @@ if __name__ == '__main__':
                         help='Seed to use for reproducing results')
     parser.add_argument('--data_dir', default='data/', type=str,
                         help='Data directory where to store/find the CIFAR10 dataset.')
+    
+    # I added a tag cli argument to distinguish the output directories of
+    # the different questions more easily.
+    parser.add_argument(
+        "--tag",
+        default="",
+        type=str,
+        help="An optional tag to add to the output directory name.",
+    )
 
     args = parser.parse_args()
     kwargs = vars(args)
 
+    # exclude the tag from kwargs since train() does not expect it
+    tag = kwargs.pop("tag")
+
     best_model, val_accuracies, test_accuracy, logging_dict = train(**kwargs)
     # Feel free to add any additional functions, such as plotting of the loss curve here
-    
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = utils.output_dir(f"mlp_pytorch_{timestamp}")
+
+    print(f"Final Test Accuracy: {test_accuracy * 100:.2f}%")
+    output_dir = utils.output_dir("mlp_pytorch", tag)
     utils.save_accuracies_plot(output_dir, val_accuracies, test_accuracy)
     utils.save_loss_plot(output_dir, logging_dict.get("training_losses", []))
     utils.save_results(output_dir, val_accuracies, test_accuracy, logging_dict)

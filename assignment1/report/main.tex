@@ -1,567 +1,543 @@
 \documentclass[a4paper,11pt]{article}
 \usepackage{amsmath,amssymb}
+\usepackage{graphicx}
 \usepackage{geometry}
+\usepackage{verbatim}
 \geometry{margin=1in}
 
 \begin{document}
 
 \section*{Question 1a: Gradient w.r.t.\ the Weight Matrix \(W\)}
 
-We use the conventions from the notes:
-
-\begin{itemize}
-  \item Batch size: \(S\), input dimension: \(M\), output dimension: \(N\).
-  \item Input features: \(X \in \mathbb{R}^{S\times M}\).
-  \item Weights: \(W \in \mathbb{R}^{N\times M}\).
-  \item Bias row vector: \(b \in \mathbb{R}^{1\times N}\), tiled to
-        \(B \in \mathbb{R}^{S\times N}\).
-  \item Output features:
-  \[
-    Y = X W^\top + B \in \mathbb{R}^{S\times N},
-  \]
-  so in indices
-  \[
-    Y_{sn} = \sum_{m=1}^{M} X_{sm} W_{nm} + b_n.
-  \]
-\end{itemize}
-
-Let \(L\) be a scalar loss depending on \(Y\).  
-We want a closed–form expression for \(\frac{\partial L}{\partial W}\) in terms
-of the gradient \(\frac{\partial L}{\partial Y}\).
-
-\subsection*{Index-wise derivation}
-
-By the chain rule,
-\[
-  \frac{\partial L}{\partial W_{ij}}
-  = \sum_{s=1}^{S} \sum_{n=1}^{N}
-      \frac{\partial L}{\partial Y_{sn}}
-      \frac{\partial Y_{sn}}{\partial W_{ij}} .
-\]
-
-From
-\[
-  Y_{sn} = \sum_{m=1}^{M} X_{sm} W_{nm} + b_n,
-\]
-we obtain
-\[
-  \frac{\partial Y_{sn}}{\partial W_{ij}}
-  = \sum_{m=1}^{M} X_{sm} \frac{\partial W_{nm}}{\partial W_{ij}}
-  = \sum_{m=1}^{M} X_{sm} \, \delta_{ni} \delta_{mj}
-  = X_{sj} \, \delta_{ni},
-\]
-where \(\delta_{ab}\) is the Kronecker delta.
-
-Plugging this into the chain rule:
-\[
-  \frac{\partial L}{\partial W_{ij}}
-  = \sum_{s=1}^{S} \sum_{n=1}^{N}
-      \frac{\partial L}{\partial Y_{sn}}
-      X_{sj} \, \delta_{ni}
-  = \sum_{s=1}^{S}
-      \frac{\partial L}{\partial Y_{si}} \, X_{sj}.
-\]
-
-\subsection*{Matrix form}
-
-Let \(G = \frac{\partial L}{\partial Y} \in \mathbb{R}^{S\times N}\).  
-The previous line says
-\[
-  \left(\frac{\partial L}{\partial W}\right)_{ij}
-  = \sum_{s=1}^{S} G_{si} X_{sj},
-\]
-which is exactly the \((i,j)\)-entry of the matrix product \(G^\top X\).  
-Therefore, in compact matrix notation,
-\[
-  \boxed{
-    \frac{\partial L}{\partial W}
-    = \left( \frac{\partial L}{\partial Y} \right)^{\!\top} X
-  }
-\]
-which has the same shape \(N \times M\) as \(W\), as required.
-
-\section*{Question 1b: Gradient w.r.t.\ the Bias \(b\)}
-
-Recall that the output features are
-\[
-  Y = X W^\top + B \in \mathbb{R}^{S\times N},
-\]
-where the bias row vector \(b \in \mathbb{R}^{1\times N}\) is tiled \(S\) times to form
-\(B \in \mathbb{R}^{S\times N}\).  In indices,
-\[
-  Y_{sn} = \sum_{m=1}^{M} X_{sm} W_{nm} + b_n.
-\]
-
-We want a closed–form expression for the gradient of the loss \(L\) with respect to
-\(b\).
-
-\subsection*{Index-wise derivation}
-
-Using the chain rule,
-\[
-  \frac{\partial L}{\partial b_j}
-  = \sum_{s=1}^{S} \sum_{n=1}^{N}
-      \frac{\partial L}{\partial Y_{sn}}
-      \frac{\partial Y_{sn}}{\partial b_j}.
-\]
-
-From the expression for \(Y_{sn}\),
-\[
-  \frac{\partial Y_{sn}}{\partial b_j}
-  = \frac{\partial}{\partial b_j}
-      \left( \sum_{m=1}^{M} X_{sm} W_{nm} + b_n \right)
-  = \delta_{nj},
-\]
-so
-\[
-  \frac{\partial L}{\partial b_j}
-  = \sum_{s=1}^{S} \sum_{n=1}^{N}
-      \frac{\partial L}{\partial Y_{sn}} \, \delta_{nj}
-  = \sum_{s=1}^{S}
-      \frac{\partial L}{\partial Y_{sj}}.
-\]
-
-\subsection*{Matrix form}
-
-Let \(G = \frac{\partial L}{\partial Y} \in \mathbb{R}^{S\times N}\) and let
-\(\mathbf{1} \in \mathbb{R}^{S\times 1}\) denote the column vector of ones.
-Then the previous line says that each component of \(\frac{\partial L}{\partial b}\)
-is the sum over the corresponding column of \(G\), which we can write as
-\[
-  \boxed{
-    \frac{\partial L}{\partial b}
-    = \mathbf{1}^\top \frac{\partial L}{\partial Y}
-  }
-\]
-where \(\frac{\partial L}{\partial b} \in \mathbb{R}^{1\times N}\), matching the
-shape of \(b\).
-
-\newpage
-\section*{Question 1c: Gradient w.r.t.\ the Input Features \(X\)}
-
-We again start from the linear transformation
-\[
-  Y = X W^\top + B, \quad
-  \text{where } X \in \mathbb{R}^{S\times M}, \;
-  W \in \mathbb{R}^{N\times M}, \;
-  B \in \mathbb{R}^{S\times N}.
-\]
-
-We wish to derive a closed–form expression for
-\(\frac{\partial L}{\partial X}\) in terms of
-\(\frac{\partial L}{\partial Y}\).
-
-\subsection*{Index-wise derivation}
-
-Let us first allow for the general possibility that the output
-entries \(Y_{t n}\) could depend on \emph{all} rows of \(X\).
-Then, by the chain rule,
-\[
-  \frac{\partial L}{\partial X_{s i}}
-  = \sum_{t=1}^{S} \sum_{n=1}^{N}
-      \frac{\partial L}{\partial Y_{t n}}
-      \frac{\partial Y_{t n}}{\partial X_{s i}} .
-\]
-In the most general case, one would need to consider the cross–sample
-interactions between \(X_{s}\) and \(Y_{t}\).
-However, in a standard linear module, the output at row \(t\)
-depends \emph{only} on the input features of the same sample \(t\),
-since
-\[
-  Y_{t n}
-  = \sum_{m=1}^{M} X_{t m} W_{n m} + b_n.
-\]
-Taking the partial derivative gives
-\[
-  \frac{\partial Y_{t n}}{\partial X_{s i}}
-  = \sum_{m=1}^{M} W_{n m} \frac{\partial X_{t m}}{\partial X_{s i}}
-  = \sum_{m=1}^{M} W_{n m} \, \delta_{ts} \, \delta_{mi}
-  = W_{n i} \, \delta_{ts}.
-\]
-
-Substituting this result back into the chain rule collapses the sum over \(t\):
-\[
-  \frac{\partial L}{\partial X_{s i}}
-  = \sum_{t=1}^{S} \sum_{n=1}^{N}
-      \frac{\partial L}{\partial Y_{t n}}
-      W_{n i} \, \delta_{ts}
-  = \sum_{n=1}^{N}
-      \frac{\partial L}{\partial Y_{s n}} \, W_{n i}.
-\]
-
-\subsection*{Matrix form}
-
-Let \(G = \frac{\partial L}{\partial Y} \in \mathbb{R}^{S\times N}\).
-The above expression corresponds to
-\[
-  \left( \frac{\partial L}{\partial X} \right)_{s i}
-  = \sum_{n=1}^{N} G_{s n} W_{n i},
-\]
-which is precisely the \((s,i)\)-entry of \(G W\).  
-Hence, in compact form:
-\[
-  \boxed{
-    \frac{\partial L}{\partial X}
-    = \frac{\partial L}{\partial Y} \, W
-  }
-\]
-where \(\frac{\partial L}{\partial X} \in \mathbb{R}^{S\times M}\), matching the
-shape of \(X\).
-
-\bigskip
-\noindent
-Intuitively, this shows that each sample’s gradient with respect to
-its input features depends only on its own row of
-\(\frac{\partial L}{\partial Y}\), confirming that batch elements
-are independent in the linear module.
-
-
-\section*{Question 1d: Gradient w.r.t.\ the Input of an Activation Module}
-
-Consider an element–wise activation function \(h\).  
-The activation module takes input features \(X\) and produces output features \(Y\) via
-\[
-  Y = h(X),
-\]
-that is, in indices
-\[
-  Y_{ij} = h(X_{ij}).
-\]
-Here \(X\) and \(Y\) have the same shape, say \(X, Y \in \mathbb{R}^{S\times D}\)
-(for some feature dimension \(D\); the exact value does not matter).
-
-We want a closed–form expression for the gradient
-\(\frac{\partial L}{\partial X}\) in terms of the gradient
-\(\frac{\partial L}{\partial Y}\) provided by the next module.
-
-\subsection*{Index-wise derivation}
-
-Start from the most general chain rule where each entry of \(Y\) could, in
-principle, depend on all entries of \(X\):
-\[
-  \frac{\partial L}{\partial X_{ij}}
-  = \sum_{k=1}^{S} \sum_{\ell=1}^{D}
-      \frac{\partial L}{\partial Y_{k\ell}}
-      \frac{\partial Y_{k\ell}}{\partial X_{ij}}.
-\]
-
-However, in an \emph{element–wise} activation module, each output entry
-\(Y_{k\ell}\) depends only on the corresponding input entry \(X_{k\ell}\):
-\[
-  Y_{k\ell} = h\bigl(X_{k\ell}\bigr).
-\]
-Thus
-\[
-  \frac{\partial Y_{k\ell}}{\partial X_{ij}}
-  = h'\bigl(X_{ij}\bigr) \, \delta_{ki} \, \delta_{\ell j},
-\]
-where \(h'\) is the derivative of \(h\) and \(\delta_{ab}\) is the Kronecker
-delta.  Substituting this back into the chain rule collapses both sums:
-\[
-  \frac{\partial L}{\partial X_{ij}}
-  = \sum_{k=1}^{S} \sum_{\ell=1}^{D}
-      \frac{\partial L}{\partial Y_{k\ell}}
-      h'\bigl(X_{ij}\bigr) \, \delta_{ki} \, \delta_{\ell j}
-  = \frac{\partial L}{\partial Y_{ij}} \, h'\bigl(X_{ij}\bigr).
-\]
-
-\subsection*{Matrix form (Hadamard product)}
-
-Define
-\[
-  G := \frac{\partial L}{\partial Y}
-  \quad\text{and}\quad
-  H := h'(X),
-\]
-where \(H\) is obtained by applying \(h'\) element–wise to \(X\),
-so \(H_{ij} = h'(X_{ij})\).  
-The index-wise result above then reads
-\[
-  \left(\frac{\partial L}{\partial X}\right)_{ij}
-  = G_{ij} \, H_{ij},
-\]
-which is exactly the Hadamard (element–wise) product of \(G\) and \(H\).
-
-Using the symbol \(\odot\) for the Hadamard product, we obtain the compact
-closed–form expression
-\[2
-  \boxed{
-    \frac{\partial L}{\partial X}
-    = \frac{\partial L}{\partial Y} \;\odot\; h'(X)
-  }
-\]
-where all tensors have the same shape as \(X\) and \(Y\).
-
-
-\section*{Question 1e: Softmax and Loss Modules}
-
-Let \(Z \in \mathbb{R}^{S\times C}\) be the feature matrix at the end of a deep
-network. A softmax layer produces
-\[
-  Y_{ij}
-  = \frac{e^{Z_{ij}}}{\sum_{k=1}^{C} e^{Z_{ik}}}, 
-  \qquad Y \in \mathbb{R}^{S\times C},
-\]
-followed by a categorical cross–entropy loss.  
-Targets are collected in \(T \in \mathbb{R}^{S\times C}\), with each row of \(T\)
-summing to \(1\).
-
-The scalar loss is the mean over samples:
-\[
-  L = \frac{1}{S} \sum_{i=1}^{S} L_i,
-  \qquad
-  L_i = - \sum_{k=1}^{C} T_{ik} \log Y_{ik}.
-\]
-
-We are given the following gradients for the softmax and loss modules:
-\[
-  \frac{\partial L}{\partial Z}
-    = Y \circ \left(
-        \frac{\partial L}{\partial Y}
-        - \bigl(\left(\tfrac{\partial L}{\partial Y} \circ Y\right)\mathbf{1}\bigr)
-          \mathbf{1}^{\!\top}
-      \right),
-\]
-\[
-  \frac{\partial L}{\partial Y}
-    = -\,\frac{1}{S}\,\frac{T}{Y},
-\]
-where \(\circ\) and the fraction \(\tfrac{T}{Y}\) denote element–wise operations,
-and \(\mathbf{1}\) is an all–ones column vector of suitable length.
-
-We want to rewrite \(\frac{\partial L}{\partial Z}\) in the form
-\[
-  \frac{\partial L}{\partial Z} = \alpha \mathbf{M},
-\]
-for some \(\alpha \in \mathbb{R}^+\) and \(\mathbf{M} \in \mathbb{R}^{S\times C}\),
-expressed in terms of \(Y, T\) and \(S\).
-
-\subsection*{Step 1: Simplify \(\displaystyle \frac{\partial L}{\partial Y}\)}
-
-In indices, the given loss gradient is
-\[
-  \left(\frac{\partial L}{\partial Y}\right)_{ij}
-  = -\,\frac{1}{S}\,\frac{T_{ij}}{Y_{ij}}.
-\]
-Let us set
-\[
-  G := \frac{\partial L}{\partial Y},
-\]
-so
-\[
-  G_{ij} = -\,\frac{1}{S}\,\frac{T_{ij}}{Y_{ij}}.
-\]
-
-\subsection*{Step 2: Compute \(G \circ Y\) and the row sums}
-
-First,
-\[
-  (G \circ Y)_{ij}
-  = G_{ij} Y_{ij}
-  = -\,\frac{1}{S}\,\frac{T_{ij}}{Y_{ij}}\,Y_{ij}
-  = -\,\frac{1}{S}\,T_{ij}.
-\]
-
-Now consider the matrix--vector product \((G \circ Y)\mathbf{1}\).
-For each row \(i\),
-\[
-  \bigl((G \circ Y)\mathbf{1}\bigr)_i
-  = \sum_{j=1}^{C} (G \circ Y)_{ij}
-  = \sum_{j=1}^{C} \left(-\,\frac{1}{S}\,T_{ij}\right)
-  = -\,\frac{1}{S} \sum_{j=1}^{C} T_{ij}
-  = -\,\frac{1}{S},
-\]
-since each row of \(T\) sums to \(1\).  
-Thus
-\[
-  (G \circ Y)\mathbf{1}
-  = -\,\frac{1}{S}\,\mathbf{1},
-\]
-and therefore
-\[
-  \bigl( (G \circ Y)\mathbf{1}\, \mathbf{1}^{\!\top} \bigr)_{ij}
-  = -\,\frac{1}{S}
-\]
-for every \(i,j\).  This is simply the \(S \times C\) matrix with all entries
-equal to \(-\tfrac{1}{S}\).
-
-\subsection*{Step 3: Plug into \(\frac{\partial L}{\partial Z}\)}
-
-We have
-\[
-  \left(
-    G - (G \circ Y)\mathbf{1}\,\mathbf{1}^{\!\top}
-  \right)_{ij}
-  = G_{ij} - \left(-\,\frac{1}{S}\right)
-  = -\,\frac{1}{S}\,\frac{T_{ij}}{Y_{ij}}
-    + \frac{1}{S}.
-\]
-Multiplying element–wise by \(Y\) gives
-\[
-  \left(\frac{\partial L}{\partial Z}\right)_{ij}
-  = Y_{ij} \left(
-      -\,\frac{1}{S}\,\frac{T_{ij}}{Y_{ij}}
-      + \frac{1}{S}
-    \right)
-  = -\,\frac{1}{S} T_{ij}
-    + \frac{1}{S} Y_{ij}
-  = \frac{1}{S} \left( Y_{ij} - T_{ij} \right).
-\]
-
-Hence, in matrix form,
-\[
-  \boxed{
-    \frac{\partial L}{\partial Z}
-    = \frac{1}{S}\,(Y - T)
-  }.
-\]
-
-Comparing with \(\frac{\partial L}{\partial Z} = \alpha \mathbf{M}\), we identify
-\[
-  \boxed{\alpha = \frac{1}{S}},
-  \qquad
-  \boxed{\mathbf{M} = Y - T}.
-\]
-
-
-\newpage
-\section*{Question 1a: Gradient w.r.t.\ the Weight Matrix \(W\)}
-
-Setup: \(Y = X W^\top + B\), where \(X \in \mathbb{R}^{S\times M}\), \(W \in \mathbb{R}^{N\times M}\), \(Y \in \mathbb{R}^{S\times N}\).
+Setup: \(Y = X W^\top + B\), where \(X \in \mathbb{R}^{S\times M}\), \(W \in
+\mathbb{R}^{N\times M}\), \(Y \in \mathbb{R}^{S\times N}\).
 
 \begin{align*}
-Y_{sn} &= \sum_{m=1}^{M} X_{sm} W_{nm} + b_n \\[0.5em]
-\frac{\partial L}{\partial W_{ij}}
-&= \sum_{s=1}^{S} \sum_{n=1}^{N}
+    Y_{sn} & = \sum_{m=1}^{M} X_{sm} W_{nm} + b_n                            \\[0.5em]
+    \frac{\partial L}{\partial W_{ij}}
+           & = \sum_{s=1}^{S} \sum_{n=1}^{N}
     \frac{\partial L}{\partial Y_{sn}}
-    \frac{\partial Y_{sn}}{\partial W_{ij}} \\[0.5em]
-\frac{\partial Y_{sn}}{\partial W_{ij}}
-&= \sum_{m=1}^{M} X_{sm} \frac{\partial W_{nm}}{\partial W_{ij}}
-= \sum_{m=1}^{M} X_{sm} \, \delta_{ni} \delta_{mj}
-= X_{sj} \, \delta_{ni} \\[0.5em]
-\frac{\partial L}{\partial W_{ij}}
-&= \sum_{s=1}^{S} \sum_{n=1}^{N}
+    \frac{\partial Y_{sn}}{\partial W_{ij}}                                  \\[0.5em]
+    \frac{\partial Y_{sn}}{\partial W_{ij}}
+           & = \sum_{m=1}^{M} X_{sm} \frac{\partial W_{nm}}{\partial W_{ij}}
+    = \sum_{m=1}^{M} X_{sm} \, \delta_{ni} \delta_{mj}
+    = X_{sj} \, \delta_{ni}                                                  \\[0.5em]
+    \frac{\partial L}{\partial W_{ij}}
+           & = \sum_{s=1}^{S} \sum_{n=1}^{N}
     \frac{\partial L}{\partial Y_{sn}}
     X_{sj} \, \delta_{ni}
-= \sum_{s=1}^{S}
+    = \sum_{s=1}^{S}
     \frac{\partial L}{\partial Y_{si}} \, X_{sj}
 \end{align*}
 
-Result (recognizing as \((i,j)\)-entry of \(G^\top X\)):
+Result:
 \[
-  \boxed{
-    \frac{\partial L}{\partial W}
-    = \left( \frac{\partial L}{\partial Y} \right)^{\!\top} X
-  }
+    \boxed{
+        \frac{\partial L}{\partial W}
+        = \left( \frac{\partial L}{\partial Y} \right)^{\!\top} X
+    }
 \]
-
 
 \section*{Question 1b: Gradient w.r.t.\ the Bias \(b\)}
 
-Setup: \(Y_{sn} = \sum_{m=1}^{M} X_{sm} W_{nm} + b_n\), where \(b \in \mathbb{R}^{1\times N}\).
+Setup: \(Y_{sn} = \sum_{m=1}^{M} X_{sm} W_{nm} + b_n\), where \(b \in
+\mathbb{R}^{1\times N}\).
 
 \begin{align*}
-\frac{\partial L}{\partial b_j}
-&= \sum_{s=1}^{S} \sum_{n=1}^{N}
+    \frac{\partial L}{\partial b_j}
+     & = \sum_{s=1}^{S} \sum_{n=1}^{N}
     \frac{\partial L}{\partial Y_{sn}}
     \frac{\partial Y_{sn}}{\partial b_j} \\[0.5em]
-\frac{\partial Y_{sn}}{\partial b_j}
-&= \delta_{nj} \\[0.5em]
-\frac{\partial L}{\partial b_j}
-&= \sum_{s=1}^{S} \sum_{n=1}^{N}
+    \frac{\partial Y_{sn}}{\partial b_j}
+     & = \delta_{nj}                     \\[0.5em]
+    \frac{\partial L}{\partial b_j}
+     & = \sum_{s=1}^{S} \sum_{n=1}^{N}
     \frac{\partial L}{\partial Y_{sn}} \, \delta_{nj}
-= \sum_{s=1}^{S}
+    = \sum_{s=1}^{S}
     \frac{\partial L}{\partial Y_{sj}}
 \end{align*}
 
-Result (summing over batch dimension):
+Result:
 \[
-  \boxed{
-    \frac{\partial L}{\partial b}
-    = \mathbf{1}^\top \frac{\partial L}{\partial Y}
-  }
+    \boxed{
+        \frac{\partial L}{\partial b}
+        = \mathbf{1}^\top \frac{\partial L}{\partial Y}
+    }
 \]
-
 
 \section*{Question 1c: Gradient w.r.t.\ the Input Features \(X\)}
 
-Setup: \(Y = X W^\top + B\), where \(Y_{tn} = \sum_{m=1}^{M} X_{tm} W_{nm} + b_n\).
+Setup: \(Y = X W^\top + B\), where \(Y_{tn} = \sum_{m=1}^{M} X_{tm} W_{nm} +
+b_n\).
 
 \begin{align*}
-\frac{\partial L}{\partial X_{si}}
-&= \sum_{t=1}^{S} \sum_{n=1}^{N}
+    \frac{\partial L}{\partial X_{si}}
+     & = \sum_{t=1}^{S} \sum_{n=1}^{N}
     \frac{\partial L}{\partial Y_{tn}}
-    \frac{\partial Y_{tn}}{\partial X_{si}} \\[0.5em]
-\frac{\partial Y_{tn}}{\partial X_{si}}
-&= \sum_{m=1}^{M} W_{nm} \frac{\partial X_{tm}}{\partial X_{si}}
-= \sum_{m=1}^{M} W_{nm} \, \delta_{ts} \, \delta_{mi}
-= W_{ni} \, \delta_{ts} \\[0.5em]
-\frac{\partial L}{\partial X_{si}}
-&= \sum_{t=1}^{S} \sum_{n=1}^{N}
+    \frac{\partial Y_{tn}}{\partial X_{si}}                            \\[0.5em]
+    \frac{\partial Y_{tn}}{\partial X_{si}}
+     & = \sum_{m=1}^{M} W_{nm} \frac{\partial X_{tm}}{\partial X_{si}}
+    = \sum_{m=1}^{M} W_{nm} \, \delta_{ts} \, \delta_{mi}
+    = W_{ni} \, \delta_{ts}                                            \\[0.5em]
+    \frac{\partial L}{\partial X_{si}}
+     & = \sum_{t=1}^{S} \sum_{n=1}^{N}
     \frac{\partial L}{\partial Y_{tn}}
     W_{ni} \, \delta_{ts}
-= \sum_{n=1}^{N}
+    = \sum_{n=1}^{N}
     \frac{\partial L}{\partial Y_{sn}} \, W_{ni}
 \end{align*}
 
-Result (recognizing as \((s,i)\)-entry of \(GW\)):
+Result:
 \[
-  \boxed{
-    \frac{\partial L}{\partial X}
-    = \frac{\partial L}{\partial Y} \, W
-  }
+    \boxed{
+        \frac{\partial L}{\partial X}
+        = \frac{\partial L}{\partial Y} \, W
+    }
 \]
-
 
 \section*{Question 1d: Gradient w.r.t.\ the Input of an Activation Module}
 
 Setup: \(Y = h(X)\) element-wise, so \(Y_{ij} = h(X_{ij})\).
 
 \begin{align*}
-\frac{\partial L}{\partial X_{ij}}
-&= \sum_{k=1}^{S} \sum_{\ell=1}^{D}
+    \frac{\partial L}{\partial X_{ij}}
+     & = \sum_{k=1}^{S} \sum_{\ell=1}^{D}
     \frac{\partial L}{\partial Y_{k\ell}}
-    \frac{\partial Y_{k\ell}}{\partial X_{ij}} \\[0.5em]
-\frac{\partial Y_{k\ell}}{\partial X_{ij}}
-&= h'(X_{ij}) \, \delta_{ki} \, \delta_{\ell j} \quad \text{(element-wise activation)} \\[0.5em]
-\frac{\partial L}{\partial X_{ij}}
-&= \sum_{k=1}^{S} \sum_{\ell=1}^{D}
+    \frac{\partial Y_{k\ell}}{\partial X_{ij}}                                               \\[0.5em]
+    \frac{\partial Y_{k\ell}}{\partial X_{ij}}
+     & = h'(X_{ij}) \, \delta_{ki} \, \delta_{\ell j} \quad \text{(element-wise activation)} \\[0.5em]
+    \frac{\partial L}{\partial X_{ij}}
+     & = \sum_{k=1}^{S} \sum_{\ell=1}^{D}
     \frac{\partial L}{\partial Y_{k\ell}}
     h'(X_{ij}) \, \delta_{ki} \, \delta_{\ell j}
-= \frac{\partial L}{\partial Y_{ij}} \, h'(X_{ij})
+    = \frac{\partial L}{\partial Y_{ij}} \, h'(X_{ij})
 \end{align*}
 
 Result:
 \[
-  \boxed{
-    \frac{\partial L}{\partial X}
-    = \frac{\partial L}{\partial Y} \;\odot\; h'(X)
-  }
+    \boxed{
+        \frac{\partial L}{\partial X}
+        = \frac{\partial L}{\partial Y} \;\odot\; h'(X)
+    }
 \]
-
 
 \section*{Question 1e: Softmax and Loss Modules}
 
-Setup: Softmax \(Y_{ij} = \frac{e^{Z_{ij}}}{\sum_{k=1}^{C} e^{Z_{ik}}}\), cross-entropy \(L_i = - \sum_{k=1}^{C} T_{ik} \log Y_{ik}\), mean loss \(L = \frac{1}{S} \sum_{i=1}^{S} L_i\).
+Setup: Softmax \(Y_{ij} = \frac{e^{Z_{ij}}}{\sum_{k=1}^{C} e^{Z_{ik}}}\),
+cross-entropy \(L_i = - \sum_{k=1}^{C} T_{ik} \log Y_{ik}\), mean loss \(L =
+\frac{1}{S} \sum_{i=1}^{S} L_i\).
 
-Given: \(\frac{\partial L}{\partial Y} = -\frac{1}{S}\frac{T}{Y}\) and \(\frac{\partial L}{\partial Z} = Y \circ \left( \frac{\partial L}{\partial Y} - ((\frac{\partial L}{\partial Y} \circ Y)\mathbf{1}) \mathbf{1}^{\!\top} \right)\).
+Given: \(\frac{\partial L}{\partial Y} = -\frac{1}{S}\frac{T}{Y}\) and
+\(\frac{\partial L}{\partial Z} = Y \circ \left( \frac{\partial L}{\partial Y}
+- ((\frac{\partial L}{\partial Y} \circ Y)\mathbf{1}) \mathbf{1}^{\!\top}
+\right)\).
 
 \begin{align*}
-G_{ij} &= \left(\frac{\partial L}{\partial Y}\right)_{ij} = -\frac{1}{S}\frac{T_{ij}}{Y_{ij}} \\[0.5em]
-(G \circ Y)_{ij} &= G_{ij} Y_{ij} = -\frac{1}{S} T_{ij} \\[0.5em]
-\bigl((G \circ Y)\mathbf{1}\bigr)_i &= \sum_{j=1}^{C} (G \circ Y)_{ij} = -\frac{1}{S} \sum_{j=1}^{C} T_{ij} = -\frac{1}{S} \quad \text{(rows of } T \text{ sum to 1)} \\[0.5em]
-\bigl((G \circ Y)\mathbf{1}\,\mathbf{1}^{\!\top}\bigr)_{ij} &= -\frac{1}{S} \\[0.5em]
-\left(G - (G \circ Y)\mathbf{1}\,\mathbf{1}^{\!\top}\right)_{ij} &= -\frac{1}{S}\frac{T_{ij}}{Y_{ij}} + \frac{1}{S} \\[0.5em]
-\left(\frac{\partial L}{\partial Z}\right)_{ij} &= Y_{ij} \left(-\frac{1}{S}\frac{T_{ij}}{Y_{ij}} + \frac{1}{S}\right) = -\frac{1}{S} T_{ij} + \frac{1}{S} Y_{ij} = \frac{1}{S}(Y_{ij} - T_{ij})
+    G_{ij}                                                           & = \left(\frac{\partial L}{\partial Y}\right)_{ij} = -\frac{1}{S}\frac{T_{ij}}{Y_{ij}}                                                           \\[0.5em]
+    (G \circ Y)_{ij}                                                 & = G_{ij} Y_{ij} = -\frac{1}{S} T_{ij}                                                                                                           \\[0.5em]
+    \bigl((G \circ Y)\mathbf{1}\bigr)_i                              & = \sum_{j=1}^{C} (G \circ Y)_{ij} = -\frac{1}{S} \sum_{j=1}^{C} T_{ij} = -\frac{1}{S} \quad \text{(rows of } T \text{ sum to 1)}                \\[0.5em]
+    \bigl((G \circ Y)\mathbf{1}\,\mathbf{1}^{\!\top}\bigr)_{ij}      & = -\frac{1}{S}                                                                                                                                  \\[0.5em]
+    \left(G - (G \circ Y)\mathbf{1}\,\mathbf{1}^{\!\top}\right)_{ij} & = -\frac{1}{S}\frac{T_{ij}}{Y_{ij}} + \frac{1}{S}                                                                                               \\[0.5em]
+    \left(\frac{\partial L}{\partial Z}\right)_{ij}                  & = Y_{ij} \left(-\frac{1}{S}\frac{T_{ij}}{Y_{ij}} + \frac{1}{S}\right) = -\frac{1}{S} T_{ij} + \frac{1}{S} Y_{ij} = \frac{1}{S}(Y_{ij} - T_{ij})
 \end{align*}
 
 Result:
 \[
-  \boxed{
-    \frac{\partial L}{\partial Z} = \frac{1}{S}(Y - T)
-  }
+    \boxed{
+        \frac{\partial L}{\partial Z} = \frac{1}{S}(Y - T)
+    }
 \]
 
-So \(\boxed{\alpha = \frac{1}{S}}\) and \(\boxed{\mathbf{M} = Y - T}\).
+So \(\boxed{\alpha = \frac{1}{S}}\) and \(\boxed{\mathbf{M} = Y - T}\). But
+sadly you can't really do this optimization in the numpy implementation since
+it's separate modules.
+
+\newpage
+
+\section*{Question 2: Multi-Layer Perceptron with NumPy}
+
+% Question 2 (20 points)
+% Implement a multi-layer perceptron using purely NumPy routines. The network should consist 
+% of a series of linear layers with ELU activation functions followed by a final linear 
+% layer and softmax activation. As a loss function, use the common cross-entropy loss for 
+% classification tasks. To optimize your network you will use the mini-batch stochastic gradient 
+% descent algorithm. Implement all modules in the files modules.py and mlp_numpy.py by carefully 
+% checking the instructions in the files. You can use the provided unittests.py to check your 
+% implementation of the modules for bugs.
+% Part of the success of neural networks is the high efficiency on graphical processing units (GPUs) 
+% through matrix multiplications. Therefore, all of your code should make use of matrix multiplications 
+% rather than iterating over samples in the batch or weight rows/columns.
+% Implementing multiplications by iteration will result in a penalty.
+% Implement training and testing scripts for the MLP inside train_mlp_numpy.py. Using the default 
+% parameters provided in this file, you should get an accuracy of around 47 − 48% using ELU activation 
+% function for the entire test set for an MLP with one hidden layer of 128 units. Finally, provide 
+% the achieved test accuracy and training loss curve for the training on ans-delft for the default values 
+% of parameters (one layer, 128 hidden units, 10 epochs, learning rate 0.1, seed 42).
+
+The results from training the Numpy MLP are shown in
+Figure~\ref{fig:mlp_numpy_results}, and you can view the training losses and
+validation accuracies per epoch in Figures~\ref{fig:mlp_numpy_accuracies} and
+\ref{fig:mlp_numpy_training_loss} respectively.
+
+As you can see we got a final test accuracy of 49.02\% on the best model.
+
+\begin{figure}
+    \verbatiminput{mlp_numpy_q2/results.json}
+    \caption{Results from training the Numpy MLP.}
+    \label{fig:mlp_numpy_results}
+\end{figure} 
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.7\textwidth]{mlp_numpy_q2/accuracies.png}
+    \caption{Validation accuracies over epochs for the numpy MLP.}
+    \label{fig:mlp_numpy_accuracies}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.7\textwidth]{mlp_numpy_q2/training_loss.png}
+    \caption{Training loss curve for the numpy MLP.}
+    \label{fig:mlp_numpy_training_loss}
+\end{figure}
+
+\newpage
+
+\section*{Question 3: Multi-Layer Perceptron with PyTorch}
+
+% Question 3 (20 points)
+% Implement the MLP in mlp_pytorch.py file by following the instructions inside the file. 
+% The interface is similar to mlp_numpy.py. Implement training and testing procedures 
+% for your model in train_mlp_pytorch.py by following the instructions inside the file. 
+% Using the same parameters as in the NumPy implementation, you should get similar accuracy 
+% on the test set. Again, provide the achieved test accuracy and training loss curve for 
+% the training on ans-delft for the default values of parameters (one layer, 128 hidden 
+% units, 10 epochs, no batch normalization, learning rate 0.1, seed 42).
+
+The results from training the PyTorch MLP are shown in
+Figure~\ref{fig:mlp_pytorch_results}, and you can view the training losses and
+validation accuracies per epoch in Figures~\ref{fig:mlp_pytorch_accuracies} and
+\ref{fig:mlp_pytorch_training_loss} respectively.
+
+As you can see we got a final test accuracy of 50.23\% on the best model.
+
+\begin{figure}
+    \verbatiminput{mlp_pytorch_q3/results.json}
+    \caption{Results from training the PyTorch MLP.}
+    \label{fig:mlp_pytorch_results}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.7\textwidth]{mlp_pytorch_q3/accuracies.png}
+    \caption{Validation accuracies over epochs for the PyTorch MLP.}
+    \label{fig:mlp_pytorch_accuracies}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.7\textwidth]{mlp_pytorch_q3/training_loss.png}
+    \caption{Training loss curve for the PyTorch MLP.}
+    \label{fig:mlp_pytorch_training_loss}
+\end{figure}
+
+\newpage
+
+\section*{Question 4a: Hessian Eigenvalues at a Local Minimum}
+
+% a) Show that the eigenvalues for the Hessian matrix in a strictly local minimum x⋆ are all
+% non-negative. Assume f : Rn → R to be C2 (twice continuously differentiable).
+
+If $f$ is twice continuously differentiable, we can use the Taylor expansion
+around a local minimum $x_{min}$:
+
+\begin{align*}
+    f(x) & = f(x_{min}) + \nabla f(x_{min})^\top (x - x_{min}) + \frac{1}{2} (x - x_{min})^\top H (x - x_{min}) + R_2(x)
+\end{align*}
+
+Since $x_{min}$ is a local minimum, the gradient at that point is zero, i.e.,
+$\nabla f(x_{min}) = 0$. Therefore, the Taylor expansion simplifies to:
+
+\begin{align*}
+    f(x) & = f(x_{min}) + \frac{1}{2} (x - x_{min})^\top H (x - x_{min}) + R_2(x)
+\end{align*}
+
+Our Hessian matrix $H$ has some eigenvalues and orthogonal eigenvectors. So we
+can write any vector as a linear combination of the eigenvectors of $H$, for
+instance $x - x_{min} = \sum_i \alpha_i v_i$, where $v_i$ are the eigenvectors
+of $H$ and $\alpha_i$ are the coefficients of the linear combination.
+
+Substituting this into the Taylor expansion gives us
+
+\begin{align*}
+    f(x) & = f(x_{min}) + \frac{1}{2} \left(\sum_i \alpha_i v_i\right)^\top H \left(\sum_j \alpha_j v_j\right) + R_2(x)                                         \\
+         & = f(x_{min}) + \frac{1}{2} \sum_{i,j} \alpha_i \alpha_j v_i^\top H v_j + R_2(x)                                                                      \\
+         & = f(x_{min}) + \frac{1}{2} \sum_{i,j} \alpha_i \alpha_j v_i^\top \lambda_j v_j + R_2(x)                      & (Hv = \lambda v)                      \\
+         & = f(x_{min}) + \frac{1}{2} \sum_{i,j} \alpha_i \alpha_j \lambda_j v_i^\top v_j + R_2(x)                                                              \\
+         & = f(x_{min}) + \frac{1}{2} \sum_{i} \alpha_i^2 \lambda_i + R_2(x)                                            & (v_i \perp v_j \text{ for } i \neq j)
+\end{align*}
+
+Since its a local minimum, we now that any $x$ in the closest neighborhood of
+$x_{min}$ must satisfy $f(x) \geq f(x_{min})$. For this point infinitesimally
+close to $x_{min}$, we know that the remainder term $R_2(x)$ becomes
+negligible.
+
+\begin{align*}
+    f(x) - f(x_{min})                                                                & \geq 0                  \\
+    (f(x_{min}) + \frac{1}{2} \sum_{i} \alpha_i^2 \lambda_i + R_2(x)  ) - f(x_{min}) & \geq 0                  \\
+    \frac{1}{2} \sum_{i} \alpha_i^2 \lambda_i + R_2(x)                               & \geq 0                  \\
+    \frac{1}{2} \sum_{i} \alpha_i^2 \lambda_i                                        & \geq 0 & (R_2(x) \to 0) \\
+    \sum_{i} \alpha_i^2 \lambda_i                                                    & \geq 0
+\end{align*}
+
+This must hold for any choice $x$ closeby $x_{min}$, so it must also hold for
+any choice of $\alpha$, so in particular we can choose $\alpha$ such that only
+one $\alpha_k$ is non-zero. This gives us
+
+\begin{align*}
+    \sum_{i} \alpha_i^2 \lambda_i & \geq 0                                                \\
+    \alpha_k^2 \lambda_k          & \geq 0 & (\alpha_k \neq 0 \land \alpha_{\not= k} = 0) \\
+    \lambda_k                     & \geq 0 & (\alpha_k^2 > 0)
+\end{align*}
+
+Since $k$ was arbitrary, this holds for all eigenvalues $\lambda_i$ of $H$.
+Thus, at a local minimum, all eigenvalues of the Hessian matrix are
+non-negative.
+
+\section*{Question 4b: Saddle Points and Local Minima in Higher Dimensions}
+
+% b) If some of the eigenvalues of the Hessian matrix at point p are positive and some are negative, 
+% this point would be a saddle point; intuitively explain why the number of saddle points is exponentially 
+% larger than the number of local minima for higher dimensions?
+
+Let's assume we don't know anything about the loss landscape, so that when we
+sample a random point in parameter space, and we look at the Hessian at that
+point, every eigenvalue has some probability of being positive or negative. We
+could say its like flipping a coin for each eigenvalue to determine its sign,
+so 50\% chance of being positive and 50\% chance of being negative.
+
+In a space of \(n\) dimensions, the Hessian will have \(n\) eigenvalues. There
+are \(2^n\) possible combinations of positive and negative eigenvalues. Out of
+these combinations, only one corresponds to a local minimum (all eigenvalues
+being non-negative) and one corresponds to a local maximum (all eigenvalues
+being non-positive). The remaining \(2^n - 2\) combinations correspond to
+saddle points. We can already see that as \(n\) increases, the number of saddle
+points grows exponentially compared to the number of local minima.
+
+And to be specific, if we assume each eigenvalue has a 50\% chance of being
+positive or negative, the probability of getting all eigenvalues positive (a
+local minimum) is \((\frac{1}{2})^n\). Similarly, the probability of getting
+all eigenvalues negative (a local maximum) is also \((\frac{1}{2})^n\). The
+probability of getting a saddle point (some eigenvalues positive and some
+negative) is therefore \(1 - 2 \cdot (\frac{1}{2})^n = 1 -
+(\frac{1}{2})^{n-1}\). Thus, the (expected) ratio of saddle points to local
+minima is
+
+\[
+    \frac{P(\text{saddle point})}{P(\text{local minimum})}
+    = \frac{1 - (\frac{1}{2})^{n-1}}{(\frac{1}{2})^n}
+    = 2^n - 2
+\]
+
+So the number of saddle points grows exponentially larger than the number of
+local minima as the dimensionality of the space increases.
+
+\section*{Question 4c: Saddle Points and Gradient Descent}
+
+% c) By using the update formula of gradient descent around saddle point p, 
+% show why saddle points can be harmful to training.
+
+The update formula for gradient descent is given by
+
+\[
+    x_{t+1} = x_t - \eta \nabla f(x_t)
+\]
+
+where \(x_t\) is the current point in parameter space, \(\eta\) is the learning
+rate, and \(\nabla f(x_t)\) is the gradient of the loss function at point
+\(x_t\). At this saddle point, the gradient \(\nabla f(x_t) = 0\), so if we are
+exactly at the saddle point, nothing is updated: \(x_{t+1} = x_t\). So we are
+stuck at the saddle point, even though it is not even a local minimum. Almost
+like being stuck at a local minimum, but worse since we are not even at a
+minimum.
+
+\newpage
+
+\section*{Question 5a: Backpropagation through Batch Normalization}
+
+% a) Adding batch normalization layers causes changes to the backpropagation steps, because
+% we also want to optimize the learnable βi and γi parameters. Assume that we have already
+% backpropagated up to the output of the batch norm node, and therefore we have each ∂L , ∂yi
+% where yi = γixi + βi. Write the derivatives of L loss with respect to the two parameters βi and γi in terms of ∂L .
+
+Given the batch normalization output \(y_i = \gamma_i x_i + \beta_i\), we can
+compute the derivatives of the loss \(L\) with respect to the parameters
+\(\beta_i\) and \(\gamma_i\) using the chain rule.
+
+\begin{align*}
+    \frac{\partial L}{\partial \beta_i}
+     & = \sum_{j} \frac{\partial L}{\partial y_j} \frac{\partial y_j}{\partial \beta_i}  \\[0.5em]
+    \frac{\partial y_j}{\partial \beta_i}
+     & = \delta_{ij}                                                                     \\[0.5em]
+    \frac{\partial L}{\partial \beta_i}
+     & = \sum_{j} \frac{\partial L}{\partial y_j} \, \delta_{ij}                         \\[0.5em]
+     & = \frac{\partial L}{\partial y_i}                                                 \\[1em]
+    \frac{\partial L}{\partial \gamma_i}
+     & = \sum_{j} \frac{\partial L}{\partial y_j} \frac{\partial y_j}{\partial \gamma_i} \\[0.5em]
+    \frac{\partial y_j}{\partial \gamma_i}
+     & = x_j \, \delta_{ij}                                                              \\[0.5em]
+    \frac{\partial L}{\partial \gamma_i}
+     & = \sum_{j} \frac{\partial L}{\partial y_j} x_j \, \delta_{ij}                     \\[0.5em]
+     & = \frac{\partial L}{\partial y_i} x_i
+\end{align*}
+
+\section*{Question 5b: Batch Normalization Parameters}
+
+% b) Consider applying batch normalization to a fully connected layer with an 
+% input size of 20 and an output size of 40. How many training parameters does 
+% this layer have, including batch normalization parameters?
+
+A fully connected layer with an input size of 20 and an output size of 40 has
+\(20 \times 40 = 800\) weights and \(40\) biases, totaling \(800 + 40 = 840\)
+parameters. Batch normalization adds two learnable parameters \(\gamma_i\) and
+\(\beta_i\) for each output, contributing an additional \(40 + 40 = 80\)
+parameters. Therefore, the total number of training parameters in this layer is
+\(840 + 80 = 920\).
+
+\section*{Question 5c: Batch Normalization during Inference}
+
+% c) During training, batch normalization normalizes inputs using the mean and 
+% variance of the current mini-batch. Explain why it would be problematic to 
+% normalize inputs the same way during inference (test time), and how batch normalization 
+% addresses this problem.
+
+During inference we might only have one sample at the time (batch size of 1),
+so the variance of this single sample would be zero, leading to division by
+zero when normalizing. Also things aren't reproducible anymore, since the
+output of the model would depend on the other sampler in the batch, which is
+not desirable. This is problematic for any small batch size, since the
+statistics of a small batch might not represent the overall data distribution
+well. But always having to use a batch size of e.g. 512 during inference is
+also impractical.
+
+To address this problem, batch normalization uses running estimates of the mean
+and variance computed during training. These running estimates are updated
+using a moving average of the batch statistics. E.g.
+
+\begin{align*}
+    \mu_{running}      & = (1 - \alpha) \mu_{running} + \alpha \mu_{batch}           \\
+    \sigma^2_{running} & = (1 - \alpha) \sigma^2_{running} + \alpha \sigma^2_{batch}
+\end{align*}
+
+where \(\alpha\) is a momentum term that controls the update rate. When you are
+done training, you save the last running estimates and use those during
+inference to normalize the inputs. This way you have a mean and variance that
+kinda represents the training data distribution, and you avoid the issues with
+small batch sizes and non-reproducibility.
+
+\section*{Question 5d: Dead Neurons with ReLU Activation}
+
+% d) Experimental analysis showed that a high percentage of neurons are dead in 
+% networks with ReLU activation functions (you can refer to tutorial 3 for more 
+% information). Explain the concept of a dead neuron, when it occurs when using 
+% ReLU, and how it harms training.
+
+A dead neuron is a neuron that outputs the same value for any (expected) input.
+So when we run a random training sample through the network, the output of that
+neuron is always some constant value. So to be exact, if you would approximate
+the probability distribution of the output of that neuron over the training
+data, it would be a delta function centered at some constant value.
+
+For a ReLU activation function, this happens already when this probability has
+no mass above zero. Since ReLU outputs zero for any negative input, if the
+input to the ReLU neuron is always negative (or zero), the output will always
+be zero.
+
+The problem with this neuron outputting a constant value is that during
+backpropagation, the gradient flowing through this neuron will be zero (since
+the derivative of a constant is zero). This means that the weights connected to
+this neuron will not get updated during training, effectively making this
+neuron useless.
+
+It is possible for a dead neuron to become active again if the weights are
+updated through the gradients of other neurons. However, this would be pure
+luck since the dead neuron itself does not contribute to the gradient updates.
+Also, the in the first layer of the network, dead neurons will never become
+active again since the inputs are fixed to the training data.
+
+\section*{Question 5e: Preventing Dead Neurons with Batch Normalization}
+
+% e) How does batch normalization prevent neurons from dying?
+
+If you apply batch normalization before the ReLU activation, it normalizes the
+input to the ReLU neuron to have zero mean and unit variance. This means that
+the input to the ReLU neuron will be distributed around zero, with roughly half
+of the inputs being positive and half being negative. So the neuron will always
+have some positive inputs, leading to non-zero outputs and gradients during
+backpropagation. So it is not dead anymore. It is not anymore a `neuron that
+outputs the same value for any (expected) input`. It is now a neuron that
+outputs the same value for half of the inputs.
+
+Even for other activation functions like Tanh or Sigmoid, this helps. The
+gradient of these activation functions is never really zero, but at very large
+and very small inputs, the gradient does become very small. So if the
+(expected) input to these activation functions is always in one of these
+extremes, the gradients will be very small, so barely any learning will happen.
+By normalizing the inputs to have zero mean and unit variance, batch
+normalization ensures that the inputs to these activation functions are in the
+region where the gradients are significant.
+
+\section*{Question 5f: Batch Normalization Experiment}
+
+% f) Previously, you trained your PyTorch MLP using the default values of 
+% parameters (one layer, 128 hidden units, 10 epochs, no batch normalization, 
+% learning rate 0.1, seed 42). Now, retrain the model with the same parameters, 
+% but this time include batch normalization after the hidden layer. Compare the 
+% resulting accuracies with those obtained in the original setting, and motivate 
+% why these observations make sense.
+
+Including batch normalization after the hidden layer in the PyTorch MLP did not
+improve the final test accuracy compared to the original setting without batch
+normalization. Both configurations achieved a final test accuracy of
+exactly 50.00\%. 
+
+You can see the results in Figure~\ref{fig:mlp_pytorch_q5f_results}, and the
+training losses and validation accuracies per epoch in
+Figures~\ref{fig:mlp_pytorch_q5f_accuracies} and
+\ref{fig:mlp_pytorch_q5f_training_loss} respectively.
+
+This does make sense however, since the model does not
+use ReLU activation functions, but ELU activation functions. Since ELU has a
+non-zero gradient for any input, the problem of dead neurons does not occur.
+Therefore, batch normalization does not provide a significant benefit in this
+case. Also batch normalization could help with the vanishing/exploding gradient
+problem, but with only one hidden layer this is not really an issue either. The
+chain of derivatives is not long enough to make the gradients vanish or
+explode. Batch normalization could also help with regularization and
+generalization, and you can see this a bit in the accuracies plot, where the
+validation accuracy plot is a bit smoother with batch normalization. But I dont
+know, this is just one run. We'd have to compare a lot of runs to be sure of
+this.
+
+
+\begin{figure}
+    \verbatiminput{mlp_pytorch_q5f/results.json}
+    \caption{Results from training the PyTorch MLP with Batch Normalization.}
+    \label{fig:mlp_pytorch_q5f_results}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.8\textwidth]{mlp_pytorch_q5f/accuracies.png}
+    \caption{Validation Accuracies with Batch Normalization}
+    \label{fig:mlp_pytorch_q5f_accuracies}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.8\textwidth]{mlp_pytorch_q5f/training_loss.png}
+    \caption{Training Loss with Batch Normalization}
+    \label{fig:mlp_pytorch_q5f_training_loss}
+\end{figure}
 
 \end{document}
