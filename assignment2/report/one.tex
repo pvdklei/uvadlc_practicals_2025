@@ -1,0 +1,396 @@
+\section*{1 Properties of CNNs}
+
+\subsection*{1.1}
+
+% Question 1.1 (9 points)
+% Run the code provided in Assignment 2 part1/ques1 directory as per the instructions given in the README.md and the question description below to answer the following:
+% (a) i. (1 point) Run the given code with net_type='Net1', and vary different conv_type from 'valid', 'replicate', 'reflect', 'circular', 'sconv' and 'fconv', and report the validation and test scores in the form of a table.
+% ii. (1 point) Look at the data samples from the train and test sets provided in the README.md. Based on the structure of the images, guess the pattern of class label 0 and class label 1. How do the samples in the train set differ from the ones in the test set?
+% (b) i. (2 points) What is the difference between conv_type 'valid', 'sconv' and 'fconv'? Why do the test accuracies of conv_type='valid', 'sconv' and 'fconv' (i.e., acc_valid, acc_sconv and acc_fconv) follow the order –
+% acc_valid < acc_sconv < acc_fconv?
+% Hint: Pay attention to the 'kernel_size' and 'stride' used in the Conv2D layers. ii. (1 point) Why is the test accuracy of conv_type='reflect' less than 'fconv'? iii. (1 point) Why is the test accuracy of conv_type='replicate' more than 'fconv' ?
+% (c) i. (1 point) Run the given code with net_type='Net2', and vary different conv_type from 'valid', 'replicate', 'reflect', 'circular', 'sconv' and 'fconv', and report the validation and test scores in the form of a table.
+% ii. (1 point) Do the test accuracies for each of the conv_types in net_type='Net2' increase or decrease w.r.t their corresponding conv_type counterparts in 'Net1'?
+% iii. (1 point) State the reason behind this change in test accuracies.
+
+\subsubsection*{(a) i.}
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{|l|c|c|c|c|}
+        \hline
+        \textbf{conv\_type} & \textbf{Val Acc (\%)} & \textbf{Val Std} & \textbf{Test Acc (\%)} & \textbf{Test Std} \\
+        \hline
+        valid               & 100.00                & 0.00             & 0.09                   & 0.11              \\
+        sconv               & 98.94                 & 0.21             & 6.49                   & 0.30              \\
+        fconv               & 88.39                 & 0.63             & 89.15                  & 0.49              \\
+        replicate           & 98.33                 & 0.46             & 93.69                  & 2.56              \\
+        reflect             & 100.00                & 0.00             & 0.00                   & 0.00              \\
+        circular            & 99.53                 & 0.51             & 82.17                  & 3.51              \\
+        \hline
+    \end{tabular}
+    \caption{Validation and test accuracies for different convolution types with Net1}
+\end{table}
+
+\subsubsection*{(a) ii.}
+
+All images with label 0 have the red square to the left of the green square,
+and all images with label 1 have the red square to the right of the green
+square. This is the case for both the training and the test set. So the main
+classification goal is to determine which square is on the which side.
+
+The difference between the training and the test set is the following. In the
+training set for label 0, both the red and green squares are always on the top
+half of the image, and for label 1, they are on the bottom half of the image.
+In the test set, however, this is the other way around: for label 0, both
+squares are on the bottom half of the image, and for label 1, they are on the
+top half of the image.
+
+So we have some kind of bias in the training set where the squares are always
+on a specific vertical half of the image for each class, and its the opposte in
+the test set.
+
+This could cause a problem for our model, since it could learn to use vertical
+position of the squares as identifier for the class, instead of horizontal
+ordering of the squares.
+
+\subsubsection*{(b) i.}
+
+In file \texttt{net.py}, we can see that the parameter \texttt{conv\_type}
+determines the padding size and padding type used in all convolutional layers,
+and as a result, the number of output features of the last convolutional layer,
+which is also the input size of the first fully connected layer \texttt{fc2},
+when using \texttt{Net2}. (Though we use \texttt{Net1} in this question, so the
+layer right after the convolutional layers is an adaptive max pooling layer)
+
+The reason the number of output features of the last convolutional layer is
+affected by the padding type and size, is the following. To perform a
+convolution operation on an image, we need all values in the local neighborhood
+of each pixel, which is determined by the kernel size. In our case this is
+always 3 by 3, so for each pixel it would need all eight pixel values around
+every pixel. But since the pixels at the edges don't have all those neighbours,
+we cannot calculate the output of the convolution at that location, and
+therefore the image shrinks in width and height after every convolutional
+layer. In our case, with kernel size 3, the width and height would shrink by 2.
+However, to avoid this shrinking, we can pad the images with fake values before
+we do the convolution, to make up neighbours of the edges. This way you can
+even increase the size of the image after convolution, depending on how much
+padding you add.
+
+The padding type determines what values these made up fake extra rows and
+columns are filled with. This is \texttt{zeros} for all three
+\texttt{conv\_type}s, meaning that the extra rows and columns are filled with
+zeros.
+
+The padding size determines how many extra rows or columns are added. Note that
+the padding is added to all sides, so a padding size of 1 means that one extra
+row is added to the top and bottom, thus 2 extra rows in total (and similarly
+two extra columns on the left and the right). For \texttt{conv\_type='valid'}
+the padding size is zero, for \texttt{conv\_type='sconv'} the padding size is
+one, and for \texttt{conv\_type='fconv'} the padding size is two.
+
+Like we mentioned, all our convolution layers use a kernel size of 3 by 3. One
+other thing that affects the change in dimensions after convolution is the
+stride, which determines how many pixels we move the kernel at each step. In
+our case the stride is 1 for the first convolutional layer and 2 for the other
+three convolutional layers, no matter the \texttt{conv\_type}.
+
+Using the kernel size, stride, and padding size, we can calculate the output
+size of one axis (width or height) after one convolutional layer with the
+formula:
+
+\[\text{output\_size} = \frac{\text{input\_size} - \text{kernel\_size} + 2 \times \text{padding}}{\text{stride}} + 1\]
+
+Using this formula, and the input size of 32 by 32, you will end up with the
+following output sizes after the four convolutional layers for each of the
+three \texttt{conv\_type}s, the same as seen in the code for calculating the
+\texttt{fc2\_input\_size}.
+
+\begin{itemize}
+    \item \texttt{conv\_type='valid'} (padding size 0):
+          \begin{itemize}
+              \item After Conv1: 30 by 30
+              \item After Conv2: 14 by 14
+              \item After Conv3: 6 by 6
+              \item After Conv4: 2 by 2
+          \end{itemize}
+    \item \texttt{conv\_type='sconv'} (padding size 1):
+          \begin{itemize}
+              \item After Conv1: 32 by 32
+              \item After Conv2: 16 by 16
+              \item After Conv3: 8 by 8
+              \item After Conv4: 4 by 4
+          \end{itemize}
+    \item \texttt{conv\_type='fconv'} (padding size 2):
+          \begin{itemize}
+              \item After Conv1: 34 by 34
+              \item After Conv2: 18 by 18
+              \item After Conv3: 10 by 10
+              \item After Conv4: 6 by 6
+          \end{itemize}
+\end{itemize}
+
+Based on this, my reasoning for the order of test accuracies \texttt{acc\_valid
+    < acc\_sconv < acc\_fconv} on \texttt{Net1} is the following.
+
+The goal is to classify if the red square is on the left or right side of the
+green square. The convolution layers learn feature maps that highlight this
+left right distinction better the deeper we go in the network, or at least that
+is what we want them to do.
+
+But a property of feature maps in convolutional neural networks is that every
+pixel in the featute maps correlates mostly to a region in the input network
+that is in the same relative position. It's receptive field might be larger,
+but it still relates a lot to the same area in the original image.
+
+So e.g. for a 2 by 2 feature map $f$, like for the final feature map of
+\texttt{conv\_type='valid'}, then $f[0,0]$ will mostly relate to the top left
+part of the image, $f[0,1]$ to the top right part of the image, $f[1,0]$ to the
+bottom left part of the image, and $f[1,1]$ to the bottom right part of the
+image.
+
+When you look at our classification task, this causes a restriction to smaller
+feature maps. Both squares could be located in the top left part of the image,
+and then $f[0,0]$ would need to contain information about both squares. Though
+this is still possible since we have a lot of channels, and the receptive field
+is larger than just the top left part, it is still a restriction. So the
+restriction is that both squares can map to the same feature map location, and
+this restriction get less and less when the feature map size increases.
+
+The bias we noted in the training set, that you can use the vertical position
+of both squares to determine the class is not at all restricted by small
+feature maps. Since for that fake feature we only need to know if squares exist
+on the top or bottom half of the image, a 2 by 2 feature map would be enough to
+capture that. A 2 by 1 would even work. And as a sidenote, I even feel like
+that is something that could more easilily be encoded in the channels even.
+
+Note that the last convolutional layer is followed by max pooling, with a
+kernel size so that the output is 1 by 1 per channel. So this essentially
+erases all spatial information. So you might think, since the spatial
+information is erased anyway, why would the size of the feature maps matter?
+But I think that the larger feature maps in earlier layers still provide more
+space to separate the squares into different locations, and at some point this
+spatial information is encoded into the channels and then the spatial
+information is not needed anymore.
+
+So therefore my reasoning is that the \texttt{conv\_type='fconv'} has feature
+maps (especially the last one, 6 by 6) that are large enough that the squares
+generally dont have to share one feature map location, making it easier to
+learn the correct left-right distinction. And it seems that the left-right
+signal is stronger than the vertical position signal (maybe because it contains
+color info as well?), so the model learns to use the correct signal and get
+almost 90\% test accuracy.
+
+The \texttt{conv\_type='valid'} is the complete opposite, the features maps
+(the final one is only 2 by 2) are just too small to be able to separate the
+squares well into separate locations, and so it learn to use the fake vertical
+position signal, and thus gets almost 0\% test accuracy, since that fake signal
+is the complete opposite in the test set.
+
+The \texttt{conv\_type='sconv'} seems to be somewhere in between, though also
+highly biased towards the wrong vertical position signal, since it only about
+6\% test accuracy. But at least it tries to use the left-right signal a bit
+more, or those few percents could also just be luck.
+
+\subsubsection*{(b) ii.}
+
+The reason why the test accuracy of \texttt{conv\_type='reflect'} is less than
+\texttt{fconv'} is the following. Reflecting the images at the edges causes the
+pixel values or feature map values seen on, e.g., the left edge of the image to
+be reflected in the padding on the right edge of the image. So one of the
+squares is on the right side, and after some layers of convolution a feature of
+that square hits the right edge of the image, then the padding on the left side
+will contain that feature.
+
+Since the while goal of the classification is to distinquish if the red square
+is on the left or right side of the green square, this messes up the whole
+classification, since now the squares will appear on both sides of the image
+(maybe after padding the input image if the squares are already at the edge,
+but at least in some deeper feature map after the receptive field has hit the
+edges). And thats very visible in the test accuracy being 0.00\%, meaning that
+now the network has overfitted on the fact that the training set has a bias
+where the squares are always on a specific vertical half of the image for each
+class.
+
+It should be noted that the fake feature of vertical position (that we don't
+want the model to learn) is also messed up by this padding type, since now
+squares on the top half will appear on the bottom half. But the results show
+that that fake signal is definitely not really affected a lot, since the test
+accuracy is 0.00\%, so the model must have learned to use that fake signal a
+lot. If it would just been random guessing, we would expect around 50\% test
+accuracy, and right now its 0.00\%. So the only explanation for that is that
+the model has learned to use the fake vertical position signal perfectly! If
+that would have been the correct thing to do, we would have expected 100\% test
+accuracy, but it isn't.
+
+\subsubsection*{(b) iii.}
+
+The reason why the test accuracy of \texttt{conv\_type='replicate'} is more
+than \texttt{fconv'} is the following. Replicating the edge pixels means that
+the pixel or feature map values at the edges are extended outwards in the
+padding. So basically every pixel or feature map location in the padding will
+take the value that the closest pixel in the actual image has. This means that
+the side on which the squares are located will be accentuated by even more
+pixels or feature map values of similar color, making it easier for the network
+to distinguish which side the squares are on.
+
+The goal of the model is to be able to kind off see if the red square is on the
+left or right side, and if the green square is on the left or right side. Let's
+say those squares are right at the edge of the image, then with replicate
+padding, the padding will be filled with more pixels of the same color as the
+square. The square has become bigger by the padding. I can't formally proof
+this, but a bigger square must be easier to detect than a smaller square,
+right? And if the square is not right at the edge, but close to it, then the
+signal might still get to an edge in some deeper feature map, and then the
+padding will still accentuate the side that the square is on.
+
+On the other hand, \texttt{fconv} fills its padding values with zeros, and thus
+does not accentuate the side the squares are on, and thus makes it harder to
+detect which side the squares are on. It maybe even weakens the signal of which
+side the squares are on, since the ratio of color pixels or features to just
+zeros is lower after padding.
+
+It's also important to note that this property of accentuating the horizontal
+side that a square is on, also accentuates the vertical position of the
+squares, which is not what we want, since we don't want the model to learn to
+use the fake signal in the training set, where you can use the vertical
+position to determine the class. But I think that the true left-right signal is
+accentuated more, perhaps because the fake signal is already easy to detect,
+and perhaps because the left-right signal contains color information as well.
+But I'm not sure about this. The test results seem to indicate this though.
+
+\subsubsection*{(c) i.}
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{|l|c|c|c|c|}
+        \hline
+        \textbf{conv\_type} & \textbf{Val Acc (\%)} & \textbf{Val Std} & \textbf{Test Acc (\%)} & \textbf{Test Std} \\
+        \hline
+        valid               & 100.00                & 0.00             & 0.00                   & 0.00              \\
+        sconv               & 100.00                & 0.00             & 0.00                   & 0.00              \\
+        fconv               & 100.00                & 0.00             & 0.00                   & 0.00              \\
+        replicate           & 100.00                & 0.00             & 0.00                   & 0.00              \\
+        reflect             & 100.00                & 0.00             & 0.00                   & 0.00              \\
+        circular            & 100.00                & 0.00             & 0.00                   & 0.00              \\
+        \hline
+    \end{tabular}
+    \caption{Validation and test accuracies for different convolution types with Net2}
+\end{table}
+
+\subsubsection*{(c) ii.}
+
+In all the cases, the test accuracies for each of the conv\_types in
+net\_type='Net2' have decreased or stayed the same w.r.t. \texttt{Net1}. To be
+exact, they have all become 0.00\%, and this was only the case for
+\texttt{conv\_type='reflect'} in \texttt{Net1}. The training accuracies for all
+the conv\_types in \texttt{Net2} have become 100.00\%, implying that the model
+has fully overfitted on the fact that there is another fake biased cue in the
+data where the vertical half the squares are located indicates the class.
+
+\subsubsection*{(c) iii.}
+
+The thing that has changed between \texttt{Net1} and \texttt{Net2} is that in
+\texttt{Net2}, after the convolutional layers, there is no adaptive max pooling
+layer, but instead the output of the last convolutional layer is flattened and
+passed through a new fully connected layer \texttt{fc2} before going to the
+final linear layer \texttt{fc1} (this one is also used after adaptive pooling
+in \texttt{Net1}).
+
+So here we are comparing two classification heads: one with adaptive max
+pooling followed by one linear layer (\texttt{Net1}), and one with one linear
+layer followed by another linear layer (\texttt{Net2}).
+
+The thing to also note is that there are no non-linearities between these
+layers, so for the \texttt{Net2} head, the two linear layers can be combined
+into one linear layer. So its basically just one linear layer after the
+convolutional layers. One linear layer that maps from CxHxW to 2. For the
+adaptive max pooling classification head, there is the adaptive max pooling
+layer that maps from CxHxW to Cx1x1 (it just takes the max value for every
+channel), and then a linear layer that maps from C to 2. So we are comparing
+compress and then linear (\texttt{Net1}) vs just linear (\texttt{Net2}).
+
+The thing we see in the results is that \texttt{Net2} has fully overfitted on
+the bias in the training set where class 0 always has the squares on the top
+half of the image, and class 1 always has the squares on the bottom half of the
+image. Else the model would not have gotten a perfect 0.00\% test accuracy.
+\texttt{Net1} still had some occasions where it learned to classify based on
+the actual pattern, the left-right ordering of the squares. Though not a lot as
+well.
+
+My reasoning why this fake signal is learned even more by \texttt{Net2} than by
+\texttt{Net1} is the following. The max pooling layer in \texttt{Net1}
+effectively throws away all spatial information. It just looks at whether a
+feature is present (there is some high value in the channel) instead of also
+keeping where that feature is located. It's translational invariant like that.
+The channels could still learn to encode some positional information, but its a
+lot harder I guess. And it seems that when you give the model the ability to
+use this spatial information (in an easier way) in \texttt{Net2}, it can really
+easily exploit the vertical position bias to get a perfect classification on
+the fake cue during training, getting 100\% training accuracy, but 0.00\% test
+accuracy.
+
+\subsection*{1.2}
+
+% Question 1.2 (8 points)
+% Fill the missing parts in exercise1.2.ipynb. Submit the file, and upload your
+% answers to this questions to ANS.
+% Train the original model and plot its accuracy during inference with respect to the angle of rotation of test images. Include this figure in your answers.
+% Next, train a new model like the previous one but adding rotational augmentation to its datasets, and plot its accuracy during inference with respect to the angle of rotation of the test images. Include this second figure in your answers.
+% Describe the differences observed between the two plots and explain the reasons for these differences.
+
+% Plots are in ./imgs/1.2_original.png and ./imgs/1.2_augmented.png
+
+We can see that when using the original model, trained without rotational data
+augmentation, it performs at around 72\% accuracy for images that are not
+rotated (0 or 360 degrees), but descreases significantly as the images are
+rotated further away from 0 degrees, forming a sort of U-shape, dropping to
+around 20\% accuracy between 60 and 300 degrees. You could also see it as more
+of a W-shape, since at 180 degrees there seems to be a small peak in accuracy
+again, where it jumps to around 30\%. This might be random noise, but I feel
+like this could be because at 180 degrees, the images are exactly upside down,
+so I guess most features would still work the same, except that they are
+flipped.
+
+For instance if some filter would detect horizontal edges, then it would still
+be activated for horizontal edges that are upside down. The edge might be
+shifted/translated a bit, but convolutional NN's are supposed to be
+translational invariant, so it would still do something to the output. This
+would not be the case for any filter though, if a filter would detect some kind
+of curved shape, then it would probably not be activated when that shape is
+upside down.
+
+When using the augmented model, trained with random rotational data
+augmentation, we can see that the model now performs much steadier across all
+rotation angles. It get's a score of around 50-53\% for all rotation angles.
+The accuracy is still a little bit higher at 0 and 360 degrees, and I think
+this is because the rotation causes images to have some empty corners (filled
+with black), and this is not the case for 0 and 360 degrees. Those empty
+corners contain no information, so the rest of the information captured in the
+image has to be encoded in a smaller number of pixel, logically lowering the
+information the model can use to classify the images, making it a bit harder.
+For 180 degrees rotation there also is no cropping, but that difference in
+accuracy is even smaller, so maybe that is just random noise, or the rotation
+still distorted the images a bit, making it harder to classify them.
+
+But even though the augmented model performs better on rotated images than the
+original model (50\% vs 20\%), it still performs worse on unrotated images
+(53\% vs 72\%). So there is a trade-off here. By augmentation by rotation, the
+model generalizes better to rotated images, but it looses some
+performance/generalization on the original unrotated images. So if you're final
+use case will probably not involve upside down images, then it might be better
+to not use (a full 360 degrees) rotational augmentation, since it will lower
+your performance in practise.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.7\textwidth]{imgs/1.2_original.png}
+    \caption{Accuracy vs rotation angle for original model}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.7\textwidth]{imgs/1.2_augmented.png}
+    \caption{Accuracy vs rotation angle for augmented model}
+\end{figure}
+

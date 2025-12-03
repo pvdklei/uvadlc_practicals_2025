@@ -114,7 +114,19 @@ if __name__ == '__main__':
     opt = parser.parse_args()
     print(opt)
 
-    use_gpu = torch.cuda.is_available()
+    # Changed this to also use MPS if available
+    use_gpu = torch.cuda.is_available() or torch.backends.mps.is_available()
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+        print("Using CUDA device")
+    elif torch.backends.mps.is_available():
+        device = torch.device("mps")
+        print("Using MPS device")
+    else:
+        assert not use_gpu
+        device = torch.device("cpu")
+        print("Using CPU device")
+
     net_model = 'net_model_wts.pth'
     conv_type = opt.conv_type
     net_type = opt.net_type
@@ -189,7 +201,9 @@ if __name__ == '__main__':
         torch.manual_seed(m)
         net = Net(conv_type=conv_type, net_type=net_type)
         if use_gpu:
-            net = net.cuda()
+            # Changed this to also use MPS if available
+            # net = net.cuda()
+            net = net.to(device)
         print(net)
         param_size = 0
         for param in net.parameters():
@@ -232,8 +246,11 @@ if __name__ == '__main__':
                     label_class = label_class.type(torch.LongTensor)
 
                     if use_gpu:
-                        images = Variable(images.cuda())
-                        label_class = Variable(label_class.cuda())
+                        # Changed this to also use MPS if available
+                        # images = Variable(images.cuda())
+                        # label_class = Variable(label_class.cuda())
+                        images = Variable(images.to(device))
+                        label_class = Variable(label_class.to(device))
                     else:
                         images, label_class = Variable(images), Variable(label_class)
 
@@ -269,8 +286,11 @@ if __name__ == '__main__':
                     label_class = label_class.type(torch.LongTensor)
 
                     if use_gpu:
-                        images = Variable(images.cuda())
-                        label_class = Variable(label_class.cuda())
+                        # Changed this to also use MPS if available
+                        # images = Variable(images.cuda())
+                        # label_class = Variable(label_class.cuda())
+                        images = Variable(images.to(device))
+                        label_class = Variable(label_class.to(device))
 
                     outputs_class = net(images)
 
@@ -319,8 +339,11 @@ if __name__ == '__main__':
             label_class = label_class.type(torch.LongTensor)
 
             if use_gpu:
-                images = Variable(images.cuda())
-                label_class = Variable(label_class.cuda())
+                # Changed this to also use MPS if available
+                # images = Variable(images.cuda())
+                # label_class = Variable(label_class.cuda())
+                images = Variable(images.to(device))
+                label_class = Variable(label_class.to(device))
 
             outputs_class = net(images)
 

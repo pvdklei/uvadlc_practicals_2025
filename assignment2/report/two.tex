@@ -1,0 +1,474 @@
+
+\newpage
+
+\section*{2 Attention, Transformers, and LLMs}
+
+\subsection*{2.1}
+
+% Question 2.1 (10 points)
+% (a) Discuss the computational challenges that arise in Transformer models when handling long input sequences. Your response should:
+%     (a) Briefly describe why long sequences are challenging for Transformers.
+%     (b) Suggest a method to address this challenge. Word limit: 200 words. (4 points)
+% (b) Discuss the receptive field of Transformer and Convolutional Neural Networks (CNNs), and their capability to capture long-range dependencies. (2 points)
+% (c) Explain why the scaling factor
+% (refer to Eq. (4)). Describe its effect on the computation of attention scores. (2 points)
+% dk is used in the self-attention mechanism 
+% (d) Explain the advantages of using multiple attention heads compared to a single
+% attention mechanism with the same total computational cost. (2 points)
+
+\subsubsection*{(a)}
+
+\textbf{Problem} The main reason why long sequences are challenging is because the attention
+mechanism is $O(n^2)$. Not calculating the queries, keys and values themselves,
+since that is only $O(n)$. But you do have to calculate the dot product for all
+$n$ queries compared to all $n$ keys, which is $O(n^2)$, and applying the final
+attention weights to the values ($AV$) is also $O(n^2)$.
+
+\textbf{Solution} You can mitigate this problem by using only letting every token pay attention
+to a subset of the other tokens, instead of all tokens. So perhaps you could
+only calculate the attention weights for the closest 100 tokens. This way you
+only have to do $O(n*100) = O(n)$ dot products instead of $O(n^2)$. And since
+you now only have to calculate sum 100 values for all $n$ tokens to apply the
+attention weights to the values, that is also $O(n)$ instead of $O(n^2)$.
+
+\subsubsection*{(b)}
+
+\textbf{Receptive field of MLPs.} The receptive field of some node in a model is the part of the input nodes that
+affects the value at that node. Here by a node I mean some hidden value scalar
+that's part if a bigger embedding vector. In a regular linear layer, every
+input node affects the value of every output node. So the receptive field is
+the entire input. And of course the same applies to a MLP. Every node in some
+layer affects every other node beyond it's layer.
+
+\textbf{Receptive field of CNNs.} In a convolutional layer the receptive field of every output node is smaller
+than the entire input, namely every output value at position $(x_{out},
+    y_{out}, c_{out})$ is only affected by all value that fall within the kernel
+size of that convolutional layer. So if you have a 2D convolutional layer with
+kernel size $k \times k$, then all the nodes in its receptive input field are
+the nodes:
+
+\begin{align}
+    (x', y', c') \quad \text{where} \quad
+    \begin{aligned}
+        x - \lfloor k/2 \rfloor & \leq x' \leq x + \lfloor k/2 \rfloor, \\
+        y - \lfloor k/2 \rfloor & \leq y' \leq y + \lfloor k/2 \rfloor, \\
+        0                       & \leq c' < C_{in}
+    \end{aligned}
+\end{align}
+
+Or in terms of how something like pytorch implements this, so that the output
+tensor can be zero indexed, the receptive field would be:
+
+\begin{align}
+    (x', y', c') \quad \text{where} \quad
+    \begin{aligned}
+        x - \lfloor k/2 \rfloor & \leq x' < x + \lceil k/2 \rceil, \\
+        y - \lfloor k/2 \rfloor & \leq y' < y + \lceil k/2 \rceil, \\
+        0                       & \leq c' < C_{in}
+    \end{aligned}
+\end{align}
+
+So that's quite a small receptive field, but by stacking multiple convolutional
+layers you can increase the receptive field. So for instance if you stack two
+convolutional layers with kernel size $k \times k$, then the receptive field of
+the output node at position $(x_{out}, y_{out}, c_{out})$ would be:
+
+\begin{align}
+    (x', y', c') \quad \text{where} \quad
+    \begin{aligned}
+        x - (k - 1) & \leq x' \leq x + (k - 1), \\
+        y - (k - 1) & \leq y' \leq y + (k - 1), \\
+        0           & \leq c' < C_{in}
+    \end{aligned}
+\end{align}
+
+Like this you can keep stacking convolutional layers to increase the receptive,
+even in a way that after enough layers some input node is affected by all of
+the input nodes, where the input nodes could for instance be the pixels of an
+image, and the output is some embedding of the image used for some task.
+
+By reducing the receptive field of some nodes, we have essentially made the
+model focus on local features in earlier layers and gradually build up to more
+global features in deeper layers. A main advantage is that this reduces the
+number of parameters needed in the every layer, as well as the computational
+cost. This computational advantage is also caused by weight sharing, but even
+without weight sharing this is more efficient than a fully connected network.
+The tradeoff is less model flexibility, but in practise it works so yeah why
+not.
+
+So CNNs can catch long-range dependencies by stacking multiple convolutional
+layers, gradually increasing the receptive field, but they are not really
+optimized to do so. Local features are still prioritized by its design.
+
+\textbf{Receptive field of Transformers.} Though this localized receptive field idea used in CNNs works on some tasks,
+like on tasks working images, where features are inheritently local, it does
+not work on all tasks. For instance in language modelling. The meaning of a
+token depends on the context in which it is used, and even though most of that
+context is local, sometimes a token refers to something mentioned way earlier
+in the text. So here we might want a bigger receptive field. Even for images
+this could be usefull, since some object in an image could relate to another
+object, in a totally different part of the image. Because of this, the
+convolutional model with a localized receptive field might have this bottleneck
+on having a small receptive field. Even though stacking them increases the
+receptive field, it is not really designed to do it I guess.
+
+Transformers provide a solution for this. Namely, in a self-attention layer,
+every output node (every dimension of every output token embedding) is affected
+by every input node (every dimension of every input token embedding), since the
+matrix multiplication used to calculate the queries, keys and values connect,
+as dimensions of one token embedding, and the attention mechanism (scaled dot
+product attention) lets every output token be some sum of all input tokens. So
+the receptive field is the entire input, similar to a fully connected layer or
+MLP. But it has still saved some computation and parameters compared to a fully
+connected layer or MLP.
+
+So as opposed to CNN's can catch long-range dependencies quite easily, since
+the receptive field at every layer is the entire input. So you don't even have
+to stack multiple self attention layers to get a big receptive field. Therefore
+this architecture is better suited for tasks where long-range dependencies are
+important, like in language modelling, perhaps some image tasks, etc.
+
+\subsubsection*{(c)}
+
+The scaling factor $\frac{1}{\sqrt{d_k}}$ is there to keep the variance similar
+between the input and output of the self-attention module.
+
+\textbf{Constant variance across layers} If the variance isn't kept constant across layers, then at some deeper layer
+the variance could get exponentially large or small, causing instabilities
+during training and not so smooth gradient terrains. The model would be kinda
+biased towards having a very large variance in its activations. And for a
+submodule like a the softmax attention mechanism, this would mean that some
+input logits would be way larger than others, causing the softmax to be very
+peaked. Although this behiour could be wanted, tests have shown that this
+generally harms model performance.
+
+\textbf{Variance independent of $d_k$} Also, it is also not really nice to have this variance change be dependent on
+the number of dimensions $d_k$ of the keys/queries. Even if you would actually
+want your model to have different variances at different layers, then you'd
+probably want to have those variances no matter the number of dimensions of the
+keys/queries you choose.
+
+Having this scaling factor makes sure that the variance of the dot products is
+independent of the number of dimensions $d_k$ of the keys/queries, and
+moreover, if the inputs have zero mean and unit variance, then the output will
+also have zero mean and unit variance.
+
+\textbf{Proof} Let $T$ be the number of tokens and $d_k$ the key/query dimension. We collect
+all queries in a matrix $Q \in \mathbb{R}^{T \times d_k}$ and all keys in $K
+    \in \mathbb{R}^{T \times d_k}$. The attention logits matrix is $S = QK^T \in
+    \mathbb{R}^{T \times T}$ with entries $S_{ij} = q_i \cdot k_j$, where $q_i, k_j
+    \in \mathbb{R}^{d_k}$ are the $i$-th and $j$-th rows of $Q$ and $K$. We analyze
+the variance of a single logit $S_{ij}$; by symmetry, the same holds for all
+$(i,j)$.
+
+Assume that the components of $q_i$ and $k_j$ are independent and identically
+distributed with zero mean and unit variance, $q_{i\ell}, k_{j\ell} \sim
+    \text{i.i.d.}$ with $\mathbb{E}[q_{i\ell}] = 0$, $\mathbb{E}[k_{j\ell}] = 0$,
+$\text{Var}(q_{i\ell}) = 1$, $\text{Var}(k_{j\ell}) = 1$. Then
+
+\begin{align*}
+    \text{Var}(S_{ij})
+     & = \text{Var}\left(\sum_{\ell=1}^{d_k} q_{i\ell} k_{j\ell}\right)               \\
+     & \overset{\text{indep.}}{=} \sum_{\ell=1}^{d_k} \text{Var}(q_{i\ell} k_{j\ell})
+    \quad (\text{cross-terms vanish when the products are uncorrelated})              \\
+     & \overset{\text{i.i.d.}}{=} d_k \cdot \text{Var}(q_{i1} k_{j1})                 \\
+     & = d_k \cdot \text{Var}(q_{i1}) \cdot \text{Var}(k_{j1})
+    \quad (\text{using independence of } q_{i1} \text{ and } k_{j1})                  \\
+     & = d_k \cdot 1 \cdot 1 = d_k \, .
+\end{align*}
+
+So without scaling, each entry of $QK^T$ has variance $d_k$, which grows with
+the key/query dimension.
+
+But if we scale it by some factor $\alpha$, and solve for $\alpha$ such that
+the output variance is 1 again, then we get:
+
+\begin{align*}
+    1                  & = \text{Var}(\alpha S_{ij})         \\
+                       & = \alpha^2 \cdot \text{Var}(S_{ij}) \\
+                       & = \alpha^2 \cdot d_k                \\
+    \Rightarrow \alpha & = \frac{1}{\sqrt{d_k}} \, ,
+\end{align*}
+
+i.e.\ scaling the logits by $1 / \sqrt{d_k}$ keeps the variance of each entry
+of $QK^T$ approximately constant (around 1) across layers and regardless of the
+value of $d_k$.
+
+\textbf{Bonus, Softmax and Attention Variance} Now consider the softmax and the actual attention output. For each query
+position $i$, we define attention weights
+
+\begin{align*}
+    A_{ij}
+     & = \text{softmax}(S_{i\cdot})_j
+    = \frac{\exp(S_{ij})}{\sum_{m=1}^T \exp(S_{im})} \, ,
+\end{align*}
+
+so $A \in \mathbb{R}^{T \times T}$ and each row sums to 1. Because every
+$S_{ij}$ has mean 0 and variance 1 with a distribution that does not depend on
+$d_k$, the distribution of the whole row $S_{i\cdot}$, and therefore of the
+softmax weights $A_{i\cdot}$, is also independent of $d_k$. By symmetry over
+positions $j$ we have
+
+\begin{align*}
+    \mathbb{E}[A_{ij}]
+     & = \frac{1}{T} \, ,
+\end{align*}
+
+and the variance $\text{Var}(A_{ij})$ is some constant that depends on $T$ but
+not on $d_k$ (exact values are not so important here; only that they stay
+$\mathcal{O}(1)$).
+
+Next, let $V \in \mathbb{R}^{T \times d_v}$ be the value matrix with entries
+$v_{jc}$ that are independent of $A$ and satisfy $\mathbb{E}[v_{jc}] = 0$,
+$\text{Var}(v_{jc}) = 1$ (again i.i.d.\ across $j$ and $c$). The attention
+output is $O = AV \in \mathbb{R}^{T \times d_v}$ with components
+
+\begin{align*}
+    O_{ic}
+     & = \sum_{j=1}^T A_{ij} v_{jc} \, .
+\end{align*}
+
+Under the independence assumptions we get
+
+\begin{align*}
+    \mathbb{E}[O_{ic}]
+     & = \mathbb{E}\left[\sum_{j=1}^T A_{ij} v_{jc}\right]                              \\
+     & \overset{\text{indep.}}{=} \sum_{j=1}^T \mathbb{E}[A_{ij}] \, \mathbb{E}[v_{jc}] \\
+     & = \sum_{j=1}^T \frac{1}{T} \cdot 0 = 0 \, ,
+\end{align*}
+
+so each output component has zero mean if the values do. For the variance we
+use the law of total variance to expand over the sum:
+
+\begin{align*}
+    \text{Var}(O_{ic})
+     & = \text{Var}\left(\sum_{j=1}^T A_{ij} v_{jc}\right)                              \\
+     & = \mathbb{E}\Big[\text{Var}\Big(\sum_{j=1}^T A_{ij} v_{jc} \,\Big|\, A\Big)\Big]
+    + \text{Var}\Big(\mathbb{E}\Big[\sum_{j=1}^T A_{ij} v_{jc} \,\Big|\, A\Big]\Big)    \\
+     & \overset{\mathbb{E}[v_{jc}]=0}{=}
+    \mathbb{E}\Big[\text{Var}\Big(\sum_{j=1}^T A_{ij} v_{jc} \,\Big|\, A\Big)\Big]      \\
+     & \overset{\text{indep. } v_{jc}}{=}
+    \mathbb{E}\Big[\sum_{j=1}^T A_{ij}^2 \, \text{Var}(v_{jc})\Big]                     \\
+     & = \mathbb{E}\Big[\sum_{j=1}^T A_{ij}^2\Big]
+    = \sum_{j=1}^T \mathbb{E}[A_{ij}^2] \, .
+\end{align*}
+
+Each row $A_{i\cdot}$ lies on the probability simplex, i.e.\ $A_{ij} \in [0,1]$
+and $\sum_{j=1}^T A_{ij} = 1$. Using $x^2 \leq x$ on $[0,1]$ we get
+
+\begin{align*}
+    \sum_{j=1}^T \mathbb{E}[A_{ij}^2]
+     & \leq \sum_{j=1}^T \mathbb{E}[A_{ij}]
+    = 1 \, .
+\end{align*}
+
+For a lower bound, Jensen's inequality for the convex function $\phi(x) = x^2$
+gives
+
+\begin{align*}
+    \left(\frac{1}{T} \sum_{j=1}^T A_{ij}\right)^2
+     & \leq \frac{1}{T} \sum_{j=1}^T A_{ij}^2
+    \quad (\text{Jensen})                     \\
+    \Rightarrow \sum_{j=1}^T A_{ij}^2
+     & \geq \frac{1}{T} \, ,
+\end{align*}
+
+and taking expectations preserves the inequality. Hence
+
+\begin{align*}
+    \frac{1}{T}
+    \leq \text{Var}(O_{ic})
+    = \sum_{j=1}^T \mathbb{E}[A_{ij}^2]
+    \leq 1 \, .
+\end{align*}
+
+The exact value in this interval depends on how peaked the softmax distribution
+is (uniform rows give $\text{Var}(O_{ic}) = 1/T$; very peaked rows push it
+closer to $1$), but in all cases it stays $\mathcal{O}(1)$ and, crucially, does
+not depend on $d_k$. In other words, choosing the scaling factor $1 /
+    \sqrt{d_k}$ keeps the attention logits well behaved (mean $\approx 0$, variance
+$\approx 1$) and, with a suitable initialization of the value vectors, also
+keeps the mean and variance of the attention output approximately constant and
+independent of $d_k$.
+
+\subsubsection*{(d)}
+
+Using multiple attention heads has several advantages compared to using a
+single attention mechanism with the same total computational cost.
+
+The computational complexity of the attention mechanism is dominated by the dot
+products to compute the attention scores, which is $O(T^2 d_k)$ for $T$ tokens
+and key/query dimension $d_k$. If we use $h$ attention heads, each with
+key/query dimension $d_k / h$, then the total computational cost across all
+heads is $h \cdot O(T^2 (d_k / h)) = O(T^2 d_k)$, the same as for a single
+head. Also, the total number of parameters and computations to compute the
+queries, keys and values remains the same, since you just split the dimensions
+across heads. Only the final linear layer, for combining the outputs of all
+heads, adds some extra parameters and computations, but since the majority of
+the computational cost is in the scaled dot product attention, the overall cost
+picture remains roughly the same.
+
+\textbf{Diverse representations} So the computational cost is the same, if you
+divide the key/query dimension equally across heads. But by having multiple heads,
+each head can learn to focus on different kind of relationships or features in the
+input tokens. And in practise this has shown to improve model performance, supposedly
+because the heads can specialize and capture diverse aspects of the input data.
+
+\subsection*{2.2}
+
+% Question 2.2 (8 points)
+% (a) Fill the missing parts of gpt.py. Complete the forward function in the CausalSelfAttention class. At this stage, you can leave the placeholder for use_flash_attn as is. For sequential prediction, ensure the mask is constructed so that the Transformer does not attend to future tokens.
+
+I have implemented CausalSelfAttention.forward in gpt.py.
+
+\subsection*{2.3}
+
+% Question 2.3 (8 points)
+% (a) Complete the RMSNorm class. (2 points)
+% (b) Integrate the necessary modules to construct a Transformer block within the
+% TransformerDecoderBlock class. (4 points)
+% (c) Given a fixed number of parameters, why do we choose the MLP to be wide
+% and not deep? (2 points)
+
+\subsubsection*{(a)}
+
+I have implemented the RMSNorm class in gpt.py.
+
+\subsubsection*{(b)}
+
+I have implemented the TransformerDecoderBlock class in gpt.py.
+
+\subsubsection*{(c)}
+
+In this MLP we want to change the features for every token into a more rich
+representation via some optimal unknown function $f: \mathbb{R}^{d_{model}} \to
+    \mathbb{R}^{d_{model}}$.
+
+We know from the universal approximation theorem that a single hidden layer MLP
+with enough width can approximate any continuous function. So in theory one
+wide layer is enough to approximate the feature enriching function $f$.
+
+Usually though, in regular MLPs we choose to go deeper instead of wider.
+Ultimately we do this simply because emperical tests has shown that this works
+well. But we have also given some reasoning to this choice. Going deeper
+generally keeps the number of parameters lower, since the number of weigth for
+one layer is $O(d_{in} * d_{out})$, so when going wider the number of
+parameters increases quadratically, while going deeper only increases it
+linearly. And parameter reduction reduces overfitting. What this also allows
+the model to do is to learn hierarchical features. The idea is that the model
+decides stuff by going though a sequence of reasoning steps, where in the first
+layer it extracts some low level features, in the next layer it combines those
+into higher level features, etc. Untill in the last layer it has some very high
+level features that it can use to make a decision.
+
+There are also downsides to going deeper. One is that training deeper models is
+harder, due to vanishing/exploding gradients, but techniques like residual
+connections and normalization layers mitigate this problem. Generally wider
+networks are easier to train because of this. Furthermore the network is just
+less flexible, it finds it harder to learn complex function. Another downside
+is that deeper models are slower during inference, since you have to do more
+sequential computations. As in, you have to compute layer after layer. You
+can't do these in parallel. Even though one wider layer has more computations,
+in practise, since we can do these very efficiently on GPUs/TPUs in parallel,
+this is often faster than doing multiple small sequential layers.
+
+Interestingly though, in the decoder blocks, we go wider instead of deeper.
+Again, ultimately this is because emperical tests have shown this to work
+better: better training or better performance or faster inference, etc. But
+again we can reason about why this might be the case.
+
+Like I said, going deeper allow us to learn hierarchical features. But since
+this is just one block, and we are stacking multiple of these blocks to form
+the full hierarchical layer, we don't need to learn hierarchical features in
+this single block. We already have enough depth to do this. In this single
+block, we just want to enrich the features by a very non-linear function, so
+going wider makes that part easier.
+
+Also like I said, going wider makes training easier. If we'd be stacking more
+linear layers in this block, then we'd also have to add more residual
+connections and normalization layers to keep training stable. That adds more
+computations that have to be done sequentially, slowing down inference, and
+apperently it shows that this isn't worth the tradeoff.
+
+Since we have a fixed number of parameters, thinking about the parameter count
+is not relevant. But on the same number of parameters we can clearly see the
+tradeoffs.
+
+Wider gives more total computations, since the one patrix multiplication is
+bigger, than a couple of smaller ones. So the computational overhead might be a
+bit bigger. But still, since GPUs are very effective at this the inference time
+might still be lower than going deeper. Anyway, the attention weight
+calculation is a lot more expensive than this so this isn't even something to
+worry over. Moreover, wider networks are more flexible and find the optimal
+function easier, so training might be faster and the final performance might be
+better. I guess that the pro's of going deeper arent really worth it in this
+case, since we arent't dealing with local hierarchical features here, and we
+already have enough depth in the full model.
+
+\subsection*{2.4}
+
+% Question 2.4 (5 points)
+% (a) What happens if we do not make use of any positional embeddings? (2 points)
+% (b) Discuss the limitations of absolute position embeddings in large language models (LLMs) and the advantages of using relative position embeddings in
+% Transformer models. (3 points)
+
+\subsubsection*{(a)}
+
+Then the model would have no way of knowing the order of the tokens or the
+relative positions of tokens to each other. If input text contains the tokens
+"The cat sat on the mat" and "On the mat sat the cat", then without positional
+embeddings the model would see these two sequences as identical. It will just
+calculate the same queries, keys and values for both sequences and the
+attention mechanism would also give the same result. The only different is that
+the output tokens are still in the same different order, but the values for
+every output token would be the exact same. So this makes the model unable to
+find differences between sequences that have the same tokens but in different
+orders. Or as another example, if some document contains the sequence, `good` +
+`movie`, then the model would not be able to know whether `good` refers to the
+`movie`.
+
+\subsubsection*{(b)}
+
+When you use absolute position embeddings, then every position in the input
+sequence has its own unique embedding vector that is added to the token
+embeddings. So token at position X wil always have the same position embedding.
+
+One limitation of this is that the model might not perform well on positions
+that arent seen a lot during training. If most training sequences are of length
+100, then positions beyond 100 will not have been seen a lot during training
+and those embedding might not be well optimized.
+
+Another limitation is that if a piece of text is shifted in position, then the
+absolute position embeddings will also shift. If we were to move a paragraph
+unrelated to enything else in the document from the start to the end of the
+document, then we'd optimmally want the model to find the exact same
+representation for that paragraph, since it's completely unrelated to anything
+else in the document and the paragraph still has the exact same ordering. But
+this absolute position shift will change the position embeddings of all tokens
+in that paragraph, changing their representations, and therefore the model
+might not recognize it as the same paragraph.
+
+And in the end, the main thing the model needs to know about token positions is
+their relative position to each other. If token "great" is right before token
+"movie", then that is more important to know than that "great" is at position
+57 and "movie" at position 58. This is what relative position embeddings
+provide. They provide a way for the model to know how tokens are positioned
+relative to each other, independent of their absolute positions. This way the
+model can better generalize can use this relative positional information to see
+the ordering of tokens, but without having to learn this mechanism for every
+possible token position.
+
+\subsection*{2.5}
+
+% Question 2.5 (4 points)
+% (a) Complete the forward function of the GPT class. In this stage, you are supposed to use config.abs_emb as True. (4 points)
+
+I have implemented the forward function of the GPT class in gpt.py.
+
+\subsection*{2.6}
+
+% Question 2.6 (5 points)
+% (a) In the file gpt.py, complete the apply_rotary_emb function in the CausalSelfAttention class. Note that the frequency is given by self.inv_freq. You will need to implement sinusoidal embedding components (rotation transformations) based on the frequency and apply the rotary position embedding transformation.
+
+I have implemented the apply_rotary_emb function in gpt.py.
+
