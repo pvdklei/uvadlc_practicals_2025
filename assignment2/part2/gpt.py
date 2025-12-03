@@ -139,7 +139,13 @@ class CausalSelfAttention(nn.Module):
 
         device = xq.device
         dim = xq.size(-1)
+
+        self.inv_freq = self.inv_freq.to(device)
+
         assert dim % 2 == 0, "Head dimension must be even for RoPE."
+        assert (
+            xq.device == xk.device
+        ), "Query and Key tensors must be on the same device."
 
         seq_pos = torch.arange(T, device=device)  # Shape: (T)
         angles = seq_pos[:, None] * self.inv_freq[None, :]  # Shape: (T, dim // 2)
@@ -255,7 +261,7 @@ class TransformerDecoderBlock(nn.Module):
         # Initialize the layers
 
         # ANSWER
-        
+
         self.layer_norm_1 = RMSNorm(config.n_embd)
         self.self_attention = CausalSelfAttention(config)
         self.layer_norm_2 = RMSNorm(config.n_embd)
@@ -536,7 +542,7 @@ class GPT(nn.Module):
 
         # Iterate through the transformer blocks
         # Apply final layer normalization and linear layer to produce logits
-        x = self.transformer.drop(x) # Why not. 
+        x = self.transformer.drop(x)  # Why not.
         for block in self.transformer.h:
             x = block(x)
         x = self.transformer.ln_f(x)
@@ -621,7 +627,9 @@ class GPT(nn.Module):
                     sorted_indices_to_remove = cumulative_probs > top_p
 
                     # Shift the indices to the right to keep also the first token above the threshold
-                    sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[..., :-1].clone()
+                    sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[
+                        ..., :-1
+                    ].clone()
                     sorted_indices_to_remove[..., 0] = 0
 
                     # Keep only the top-p tokens
@@ -629,7 +637,6 @@ class GPT(nn.Module):
 
                 # sample from the distribution
                 idx_next = torch.multinomial(probs, num_samples=1).long()
-                    
 
             # append sampled index to the running sequence and continue
             idx = torch.cat((idx, idx_next), dim=1)

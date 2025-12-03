@@ -470,5 +470,127 @@ I have implemented the forward function of the GPT class in gpt.py.
 % Question 2.6 (5 points)
 % (a) In the file gpt.py, complete the apply_rotary_emb function in the CausalSelfAttention class. Note that the frequency is given by self.inv_freq. You will need to implement sinusoidal embedding components (rotation transformations) based on the frequency and apply the rotary position embedding transformation.
 
-I have implemented the apply_rotary_emb function in gpt.py.
+I have implemented the apply\_rotary\_emb function in gpt.py.
 
+\subsection*{2.7}
+
+% Question 2.7 (4 points)
+% Train the LLM for 5 epochs on the “Fairy Tales by Brothers Grimm” corpus with the default parameters provided in cfg.py and provide training loss curves (you can use screenshots from Tensorboard).
+% Note: We recommend also going through the following Section 2.8 to implement optimizations. With all available optimizations, it should take around 20-30 minutes on a single A100.
+
+This is currently running on snellius.
+
+\subsection*{2.8}
+
+% (a) Finally, complete the generate function in gpt.py. After requiring the probabilities over your vocabulary, implement both a greedy algorithm picking the most likely prediction and a Top-P sampling algorithm. (5 points)
+% (b) Devise specific prompts that test the accumulated knowledge of the model using generate.py. You are free to tweak various generation parameters not related to training, such as temperature, p threshold, and the prompt.
+% (bonus: 2 points)
+
+\subsubsection*{(a)}
+
+I have implemented both greedy decoding and Top-P sampling in the generate
+function in gpt.py.
+
+\subsubsection*{(b)}
+
+I have to wait for the model to finish training before I can test it with
+prompts.
+
+\subsection*{2.9}
+
+% Question 2.9 (4 points)
+% (a) Now implement FlashAttention. You can simply use the built-in PyTorch function F.scaled_dot_product_attention. (1 point)
+% (b) Discuss the benefits of using FlashAttention and what they stem from. (2 points)
+% (c) What could also be a downside of using a large batch size? (1 points)
+
+\subsubsection*{(a)}
+
+I have implemented FlashAttention in gpt.py by using
+\texttt{F.scaled\_dot\_product\_attention}.
+
+\subsubsection*{(b)}
+
+With normal attention, you have to compute a large attention score matrix (of
+size $T \times T$ for $T$ tokens sequence length). This means not only a lot of
+computations, but also it needs a lot of memory to store the matrix before you
+can apply the softmax and multiply with the values. This is so much memory that
+the memory bandwidth becomes the bottleneck in calculating this.
+
+FlashAttention avoids this by computing the attention score in smaller chunks,
+and applying every chunk directly to the values. This way it needs less memory,
+since it can discard other chunks while computing a new chunk. Because it used
+less memory, the gpu can use its faster SRAM memory instead of the slower but
+bigger RAM, increasing speed a lot.
+
+You might think: "But we need all the attention scores in one row of the
+attention matrix to find the softmax weights for one query token". But flash
+attention uses some kind of running softmax calculation, renormalizing output
+values as it handles more chunks. The rest of the calculations are simple to do
+in chunks. One you have an attention score for some chunk, (though this score
+is unnormalized), you can directly multiply it with the corresponding value
+chunk and add it to the output. When you do the next chunk you do some
+renormalization of the previous output and then you add that to the output as
+well.
+
+If we need to find some output value $O$ given some queries $Q$, keys $K$ and
+values $V$, then we normally find the output $O_{s,d}$ at sequence position $s$
+and dimension $d$ with:
+
+\begin{align*}
+    O_{s,d}
+     & = \sum_{t=1}^T A_{s,t} V_{t,d}                                                                                     \\
+     & = \sum_{t=1}^T \text{softmax}\left(\frac{Q_s \cdot K_t}{\sqrt{d_k}}\right) V_{t,d}                                 \\
+     & = \sum_{t=1}^T \frac{\exp(Q_s \cdot K_t / \sqrt{d_k})}{\sum_{m=1}^T \exp(Q_s \cdot K_m / \sqrt{d_k})} V_{t,d} \, .
+\end{align*}
+
+Here that inner sum in the denominator is the problem, since it needs all $T$
+keys to compute the attention weights for one query. What flash attention kind
+off does is to keep to first calculate an unnormalized output, and then
+normalize it at the end.
+
+\begin{align*}
+    \tilde{O}_{s,d}
+     & = \sum_{t=1}^T \exp(Q_s \cdot K_t / \sqrt{d_k}) V_{t,d} \, .                 \\
+    O_{s,d}
+     & = \frac{\tilde{O}_{s,d}}{\sum_{m=1}^T \exp(Q_s \cdot K_m / \sqrt{d_k})} \, .
+\end{align*}
+
+So now every time we calculate some unnormalized attention score
+$\tilde{A}_{q,k}$, for some query position $q$ and key position $k$, then we
+can add it to the output $\tilde{O}_{q} = \tilde{O}_{q} + \tilde A_{q,k} V_{k}$
+directly, and add it to the running sum of attention scores $Z_q = Z_q +
+    \tilde{A}_{q,k}$. Then at the end we can normalize the output with $O_q =
+    \tilde{O}_q / Z_q$.
+
+There are a lot more specifics to this in practise, to minimize the amount of
+memory that has to be stored and moved around, and maximizing the amount of
+data in the fast memory, but the idea is based on this. Only store data that is
+needed at the moment, and discard other data. The example I gave only does one
+element of the output at a time, but in practise you do this in chunks to still
+keep the parallelism benefits of the GPU, since they are still optimized to do
+a lot of calculations in parallel. So what you'd do is do a chunk of attention
+scores at once, over a large batch size (so still a lot of parallelism), but
+this time you dont worry about the huge attention matrix you have to store.
+
+\subsubsection*{(c)}
+
+A downside of using a large batch size is that it can lead to worse
+generalization. When using large batch sizes the gradient estimates become more
+accurate compared to the true gradient over the whole dataset. This means that
+the gradient updates become more consistent. This might sound good, but it will
+also mean that the model might not be able to ascape local minima as easily,
+since the gradient updates are more and more the same for every batch. With
+smaller batch sizes you add some more randomness to the updates, making it
+easier to also explore beyond local minima. The update step might jump out of a
+local minima because of the noise in the gradient estimate. Because of this,
+larger batch sizes are known to find sharp minima (a minima that is very
+narrow, if you'd change the parameters just a bit the loss could increase a
+lot). These sharp minima are typical for overfitting, some very specific
+semi-optimal overfitted solution might give good training performance, but
+since it generalizes pourly its also not very stable and needs very specific
+parameters to work well. So such a minima is usually very sharp and bad for
+generalization. Small batches on the other hand, are known to find flatter
+minima (a minima that is wide, if you'd change the parameters a bit the loss
+would not increase or decrease that much). This is more typical for good
+generalization, since it shows the model has found some parameter region that
+works well for all the training data, even if you change the parameters a bit.
