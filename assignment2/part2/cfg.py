@@ -4,6 +4,15 @@ import os
 def get_config():
     parser = argparse.ArgumentParser()  # Parse training configuration
 
+    # CHANGED FOR MACOS TESTING
+
+    if hasattr(os, 'sched_getaffinity'):
+        num_workers = len(os.sched_getaffinity(0)) - 1
+    else:
+        num_workers = os.cpu_count()
+
+    # END CHANGED FOR MACOS TESTING
+
     # Model
     parser.add_argument('--txt_file', type=str, default="./assets/book_EN_grimms_fairy_tales.txt", help="Path to a .txt file to train on")
     parser.add_argument('--model_type', type=str, default='gpt-mini', help="Define the gpt2 version to be initialised")
@@ -23,7 +32,7 @@ def get_config():
     # Additional arguments. Feel free to add more arguments
     parser.add_argument('--log_dir', type=str, default='./logs', help='Sets logging directory for tensorboard logger.')
     parser.add_argument('--seed', type=int, default=0, help='Seed for pseudo-random number generator')
-    parser.add_argument('--num_workers', type=int, default=len(os.sched_getaffinity(0))-1, help='Num cpu workers used for training')
+    parser.add_argument('--num_workers', type=int, default=num_workers, help='Num cpu workers used for training')
     parser.add_argument('--progress_bar', action='store_true', help=(
                             'Use a progress bar indicator for interactive experimentation. '
                             'Not to be used in conjuction with SLURM jobs'
