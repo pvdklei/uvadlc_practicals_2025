@@ -602,7 +602,6 @@ class GPT(nn.Module):
 
             # forward the model to get the logits for the index in the sequence
             # pluck the logits at the final step and scale by desired temperature
-
             logits = self.forward(idx_cond)
             logits = logits[:, -1, :] / temperature
 
@@ -611,29 +610,39 @@ class GPT(nn.Module):
                 idx_next = torch.argmax(logits, dim=-1, keepdim=True)
 
             else:
-                # apply softmax to convert logits to (normalized) probabilities
-                probs = F.softmax(logits, dim=-1)
-
-                # optionally only consider top-k logits for sampling.
+                # optionally only consider top-k logits for sampling (set others to -inf before softmax)
                 if top_k is not None:
-                    probs, _ = torch.topk(probs, top_k, dim=-1)
+                    v, _ = torch.topk(logits, top_k, dim=-1)
+                    min_vals = v[..., -1, None]
+                    logits = torch.where(
+                        logits < min_vals, torch.full_like(logits, float("-inf")), logits
+                    )
 
                 # optionally apply top-p sampling
                 if top_p is not None:
-                    sorted_probs, sorted_indices = torch.sort(probs, descending=True)
+                    # sort logits and compute cumulative probabilities
+                    sorted_logits, sorted_indices = torch.sort(
+                        logits, descending=True, dim=-1
+                    )
+                    sorted_probs = F.softmax(sorted_logits, dim=-1)
                     cumulative_probs = torch.cumsum(sorted_probs, dim=-1)
 
-                    # Find index where cumulative probability exceeds top_p
+                    # mask tokens with cumulative probability above top_p
                     sorted_indices_to_remove = cumulative_probs > top_p
-
-                    # Shift the indices to the right to keep also the first token above the threshold
+                    # shift mask right to keep first token above threshold
                     sorted_indices_to_remove[..., 1:] = sorted_indices_to_remove[
                         ..., :-1
                     ].clone()
                     sorted_indices_to_remove[..., 0] = 0
+                    sorted_logits[sorted_indices_to_remove] = float("-inf")
 
-                    # Keep only the top-p tokens
-                    probs[sorted_indices[sorted_indices_to_remove]] = 0.0
+                    # project filtered logits back to original ordering
+                    logits = torch.zeros_like(logits).scatter_(
+                        -1, sorted_indices, sorted_logits
+                    )
+
+                # apply softmax to convert logits to (normalized) probabilities
+                probs = F.softmax(logits, dim=-1)
 
                 # sample from the distribution
                 idx_next = torch.multinomial(probs, num_samples=1).long()
