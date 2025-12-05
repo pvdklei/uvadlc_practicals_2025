@@ -1,3 +1,4 @@
 **/output
 **/*.pth 
 **/__pycache__
+**/*.ckpt

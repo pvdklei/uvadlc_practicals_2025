@@ -7,6 +7,7 @@ from torch_geometric.utils import add_self_loops
 
 from graph_cnn import MatrixGraphConvolution, MessageGraphConvolution, GraphAttention
 
+# There was a mistake in the tests? Had to add is_gat flags????
 
 class TestConvolutionLayers(unittest.TestCase):
     @classmethod
@@ -19,14 +20,18 @@ class TestConvolutionLayers(unittest.TestCase):
     def setUp(self):
         self.input_data = torch.randn(self.num_nodes, self.in_features, requires_grad=True)
 
-    def shared_logic_for_output_shape_test(self, layer_class):
+    def shared_logic_for_output_shape_test(self, layer_class, is_gat=False):
         self.conv_layer = layer_class(self.in_features, self.out_features)
         output = self.conv_layer(self.input_data, self.edge_index)
+        if is_gat:
+            output = output[0]
         self.assertEqual(output.shape, (self.num_nodes, self.out_features))
 
-    def shared_logic_for_test_gradient_flow(self, conv_layer):
+    def shared_logic_for_test_gradient_flow(self, conv_layer, is_gat=False):
         self.conv_layer = conv_layer(self.in_features, self.out_features)
         output = self.conv_layer(self.input_data, self.edge_index)
+        if is_gat:
+            output = output[0]
         loss = output.sum()
         loss.backward()
         self.assertIsNotNone(self.input_data.grad)
@@ -52,7 +57,7 @@ class TestConvolutionLayers(unittest.TestCase):
         self.shared_logic_for_output_shape_test(MessageGraphConvolution)
 
     def test_output_shape_GAT(self):
-        self.shared_logic_for_output_shape_test(GraphAttention)
+        self.shared_logic_for_output_shape_test(GraphAttention, is_gat=True)
 
     def test_gradient_flow_matrix_GCN(self):
         self.shared_logic_for_test_gradient_flow(MatrixGraphConvolution)
@@ -61,7 +66,7 @@ class TestConvolutionLayers(unittest.TestCase):
         self.shared_logic_for_test_gradient_flow(MessageGraphConvolution)
 
     def test_gradient_flow_GAT(self):
-        self.shared_logic_for_test_gradient_flow(GraphAttention)
+        self.shared_logic_for_test_gradient_flow(GraphAttention, is_gat=True)
 
     def test_parameters_updated_matrix_GCN(self):
         self.shared_logic_for_test_gradient_flow(MatrixGraphConvolution)
@@ -70,7 +75,7 @@ class TestConvolutionLayers(unittest.TestCase):
         self.shared_logic_for_test_gradient_flow(MessageGraphConvolution)
 
     def test_parameters_updated_GAT(self):
-        self.shared_logic_for_test_gradient_flow(GraphAttention)
+        self.shared_logic_for_test_gradient_flow(GraphAttention, is_gat=True)
 
     def test_implementation_consistency(self):
         conv_1 = MessageGraphConvolution(self.in_features, self.out_features)

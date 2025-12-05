@@ -1,0 +1,319 @@
+\newpage
+
+\section*{3 Graph Neural Networks}
+
+\subsection*{3.1}
+
+% Question 3.1 (8 points)
+% - For the sub-questions a, b and c provide your answers as a matrix in the notation of a 2D python list. For example: [[1,2,3], [4,5,6], [7,8,9]]
+% (a) (2 points) Write down the adjacency matrices for the graphs shown in Fig. 6. Please respect the indicated node ordering.
+% (b) (2 point) For the first graph (Fig. 6, left), also write down the square of the adjacency matrix 𝐴2. How can you interpret the entries of the squared adjacency matrix 𝐴2? How can you interpret the entries of the adjacency matrix to the power of 𝑛, (𝐴𝑛)𝑢𝑣?
+% (c) (4 point) The Laplacian matrix captures the relationship between connected nodes, thus influencing how feature values propagate through the network. For the second graph (Fig. 6, right), write down the Laplacian matrix. Then, without performing calculations, reason which node (or nodes) changes the most in feature values when the Laplacian is applied to an input matrix X
+% (F = LX), and explain why.
+% Hint: Being concise and to the point will help you get all the points.
+
+\subsubsection*{(a)}
+
+The adjacency matrices for the graphs in Fig. 6 are as follows:
+
+For the left graph:
+\[
+    A_1 = \begin{bmatrix}
+        0 & 1 & 1 & 0 & 1 \\
+        1 & 0 & 1 & 0 & 0 \\
+        1 & 1 & 0 & 1 & 0 \\
+        0 & 0 & 1 & 0 & 0 \\
+        1 & 0 & 0 & 0 & 0
+    \end{bmatrix}
+\]
+
+For the right graph:
+\[
+    A_2 = \begin{bmatrix}
+        0 & 1 & 1 & 1 \\
+        1 & 0 & 1 & 0 \\
+        1 & 1 & 0 & 1 \\
+        1 & 0 & 1 & 0
+    \end{bmatrix}
+\]
+
+Or in python list notation:
+
+\texttt{A1 =
+        [[0, 1, 1, 0, 1],
+            [1, 0, 1, 0, 0],
+            [1, 1, 0, 1, 0],
+            [0, 0, 1, 0, 0],
+            [1, 0, 0, 0, 0]]}
+\texttt{A2 =
+        [[0, 1, 1, 1],
+            [1, 0, 1, 0],
+            [1, 1, 0, 1],
+            [1, 0, 1, 0]]}
+
+\subsubsection*{(b)}
+
+The square of the adjacency matrix for the first graph is:
+
+\[
+    A_1^2 = \begin{bmatrix}
+        3 & 1 & 1 & 1 & 0 \\
+        1 & 2 & 1 & 1 & 1 \\
+        1 & 1 & 3 & 0 & 1 \\
+        1 & 1 & 0 & 1 & 0 \\
+        0 & 1 & 1 & 0 & 1
+    \end{bmatrix}
+\]
+
+Or in python list notation: \texttt{A1\_squared = [[3, 1, 1, 1, 0], [1, 2, 1,
+        1, 1], [1, 1, 3, 0, 1], [1, 1, 0, 1, 0], [0, 1, 1, 0, 1]]}
+
+You can interpret this in the following way.
+
+Every entry of this $A^2_{uv}$ matrix indicates the number of distinct paths of
+length 2 between node $u$ and node $v$ in the original graph. So in how many
+different ways you can go from node $u$ to node $v$ in exactly 2 steps.
+
+You can reuse this interpretation even for the original adjacency matrix: Every
+entry of the original adjacency matrix $A_{uv}$ indicates the number of
+distinct paths of length 1 between node $u$ and node $v$ in the original graph.
+So in how many different ways you can go from node $u$ to node $v$ in exactly 1
+step. In other words, it indicates whether there is a direct edge between node
+$u$ and node $v$.
+
+Generalizing to the adjacency matrix to the power of $n$, every entry of this
+$A^n_{uv}$ matrix indicates the number of distinct paths of length $n$ between
+node $u$ and node $v$ in the original graph. So in how many different ways you
+can go from node $u$ to node $v$ in exactly $n$ steps.
+
+\subsubsection*{(c)}
+
+The Laplacian matrix $L$ of a graph is essentially defined as $L = D - A$,
+where $D$ is the degree matrix and $A$ is the adjacency matrix. The degree
+matrix is a diagonal matrix where each entry $D_{uu}$ is the degree of node
+$u$, i.e., the number of edges connected to it. Since the adjacency matrix has
+zeros on the diagonal (no self-loops), we just have to replace these zeros by
+the degree of the corresponding nodes to get the Laplacian matrix, and negate
+the other entries.
+
+So the Laplacian matrix for the right graph is:
+
+\[
+    L = \begin{bmatrix}
+        3  & -1 & -1 & -1 \\
+        -1 & 2  & -1 & 0  \\
+        -1 & -1 & 3  & -1 \\
+        -1 & 0  & -1 & 2
+    \end{bmatrix}
+\]
+
+The Laplacian can be interpreted as something akin to what the derivative/edge
+kernel does in image processing, where you do the kernel weights are -1 on one
+side and 1 on the other. When applying it to an input feature matrix $X$ (i.e.,
+$F = LX$), it emphasizes the differences between a node's feature values and
+those of its neighbors. It shows how much the values of $X$ change at some
+node, just like a derivative shows how much a function changes at some point.
+
+So for calculating row $u$ of the output matrix $F$, you basically do this
+
+\begin{align*}
+    F_u & = D_{uu} \cdot X_u - \sum_{v \in G} A_{uv} \cdot X_v \\
+        & = \text{degree}(u) \cdot X_u - \sum_{v \in N(u)} X_v
+\end{align*}
+
+So its own feature values times its degree, minus the sum of the feature values
+of its neighbors. That means that if a node has lower features than its
+neighbors, its output feature values will be negative, and if it has higher
+features than its neighbors, its output feature values will be positive. If it
+roughly has the same feature values as its neighbors, its output feature values
+will be close to zero.
+
+So, getting back to the question, which node (or nodes) changes the most in
+feature values when the Laplacian is applied to an input matrix $X$ (i.e, $F =
+    LX$)? The one thing that I can say for sure is that all nodes will changes in
+value when comparing rows of $F$ to rows of $X$, unless all feature values in
+$X$ are exactly zero or some other special case. It's like taking a derivative:
+the derivative is never the same as the origin function, unless the function
+was a constant zero function or an exponential $e^x$ function.
+
+How the values of $F$ change compared to $X$? Well that really depends on the
+input feature matrix $X$. If $X$ has the same values at every row, then all
+nodes will have output feature values of zero. But generally the output values
+that will stand out in $F$ are teh lower and higher values, and these are given
+to nodes whose features in $X$ were a lot different from the neighbours. Also,
+theoretically, nodes with a high degree could in theory have more change
+compared to neighbours, as they sum up more stuff from their neighbours and
+themself.
+
+\subsection*{3.2}
+
+% Question 3.2 (4 points)
+% (a) (1 point) How does the presence of the bias term 𝐵(𝑙) h(𝑙) in Eq. (6) influence 𝑣
+% the final embedding of node 𝑣 compared to a scenario without this term? 
+% (b) (3 points) In message-passing neural networks (Gilmer et al. 2017 [10]), after every layer, the information contained in the embeddings of a node is
+% propagated to the neighbor nodes in so-called messages. These are summed up to update the node embedding:
+% 𝑚𝑙+1= Õ message(h𝑙,h𝑙,𝑒 ),
+% 𝑢∈𝒩 (𝑣)
+% h𝑙+1 = update(h𝑙 , 𝑚𝑙+1).
+% Here, ’message’ and ’update’ are nonlinear functions that can be parametrized by artificial neural networks.
+% The graph convolution (Eq. 6), is a particular case of message-passing algorithm (aside the fact that graph convolution aggregates with mean instead of sum). Implement the message and update function for the graph convolution layer. The functions you need to implement are in graph_cnn.py. Follow the instructions in the README.
+
+\subsubsection*{(a)}
+
+Without this bias term, the output embedding of node $v$ would be solely
+determined by the values of its neightbors, and not by its own previous
+embedding.
+
+So with this term, the output embedding of node $v$ is influenced both by its
+own previous embedding and by the embeddings of its neighbors. And without it
+the output embedding of node $v$ is only influenced by the embeddings of its
+neighbors.
+
+If you mean leaving out only the $B$ weigth matrix, but keeping the previous
+node embedding $h^{(l)}_v$, then the output embedding of node $v$ would be
+shifted by the original embedding of node $v$ itself, but not transformed. And
+this only works if the previous embedding and the output embedding have the
+same size.
+
+\subsubsection*{(b)}
+
+I have implemented the message and update functions for the graph convolution
+layer in the \texttt{graph\_cnn.py} file as instructed in the README.
+
+\subsection*{3.3}
+
+% Question 3.3 (10 points)
+% (a) Derive the matrix version of the formula for the graph convolution. Show that
+% it becomes 𝐻(𝑙+1) = 𝜎(𝐷−1𝐴𝐻(𝑙)𝑊(𝑙)𝑇 + 𝐻(𝑙)𝐵(𝑙)𝑇).. Show the full derivation,
+% i.e. one step at a time and explain all non-trivial steps.
+% (b) (3 points) Re-implement the graph convolution to use the matrix update
+% formula. You need to implement the forward function, make_adjacency_- matrix function, and the make_inverted_degree_matrix for the class MatrixGraphConvolution. The functions are in the graph_cnn.py. Follow the instructions in the README.
+
+\subsubsection*{(a)}
+
+\begin{align*}
+    h^{(l+1)}_v & = \sigma \left( \frac{1}{\text{degree}(v)} \sum_{u \in N(v)} h^{(l)}_u W^{(l)T} + h^{(l)}_v B^{(l)T} \right) \\
+                & = \sigma \left( \sum_{u} \frac{A_{vu}}{\text{degree}(v)} h^{(l)}_u W^{(l)T} + h^{(l)}_v B^{(l)T} \right)     \\
+                & = \sigma \left( \sum_{u} D^{-1}_{vv} A_{vu} h^{(l)}_u W^{(l)T} + h^{(l)}_v B^{(l)T} \right)                  \\
+                & = \sigma \left( D^{-1}_{vv} (\sum_{u} A_{vu} h^{(l)}_u) W^{(l)T} + h^{(l)}_v B^{(l)T} \right)                \\
+                & = \sigma \left( D^{-1}_{vv} (A_{v} H^{(l)}) W^{(l)T} + h^{(l)}_v B^{(l)T} \right)                            \\
+    H^{(l+1)}   & = \sigma \left( D^{-1} A H^{(l)} W^{(l)T} + H^{(l)} B^{(l)T} \right)
+\end{align*}
+
+Where in step (2) we rewrote the sum over neighbors $N(v)$ to a sum over all
+nodes $u$, by multiplying with the adjacency matrix entry $A_{vu}$, which is 1
+if $u$ is a neighbor of $v$, and 0 otherwise. So the only terms that remain in
+the sum are those where $u$ is a neighbor of $v$.
+
+And in step (3) we rewrote the division by degree of $v$ as a matrix
+multiplication with the inverted degree matrix $D^{-1}$, where the entry
+$D^{-1}_{vv}$ is equal to $\frac{1}{\text{degree(v)}}$.
+
+In step (4) and (5) we factor out the sum over neightbours into a matrix mult,
+where we multiply one row of the adjacency matrix $A_v$ with the feature matrix
+$H^{(l)}$ to get the sum of the features of the neighbors of node $v$.
+
+And in the last step I rewrote the indexed equation into the full matrix
+operation over all the nodes, like you requested. I guess this step is quite
+trivial.
+
+\subsubsection*{(b)}
+
+I have implemented the message and update functions for the graph convolution
+layer in the \texttt{graph\_cnn.py} file as instructed in the README.
+
+\subsection*{3.4}
+
+% Question 3.4 (8 points)
+% (a) (2 point) How does aggregation occur in GATs compared to Graph Convolutional Networks (GCNs)?
+% (b) (2 points) You’re building a recommendation system where users (nodes) are connected by social relationships (edges), but some users are bots or spam accounts. Compare how GATs and GCNs would handle this scenario. Would attention weights help identify suspicious nodes? How might you verify this?
+% (c) (2 points) Provide two advantages of using GATs over Transformers for tasks involving graph-structured data.
+% Hint: Being concise and to the point will help you get all the points.
+% (d) (3 points) Implement graph attention. Follow the implementation of Veličković et al. (2018). You need to implement the forward function for graph attention class in graph_cnn.py. Follow the instructions in the README.
+% (e) (3 points) Show the train accuracy and validation accuracy plots for the graph convolution and graph attention. You can use a screenshot from Tensorboard.
+
+\subsubsection*{(a)}
+
+In GCNs as explained above, aggregation of neightbouring nodes occurs by taking
+the mean of the weight-transformed feature embeddings of the neighboring nodes
+and adding it up with a transformed version of the node's own embedding.
+
+In the lectures another slighly different version of GCNs was explained, where
+also a kind of sum is taken over the neightbouring embeddings, but this is a
+weighted sum, where the weights are based on the degrees of the target and
+source nodes. In the regular GCN version described above, all neighbouring
+values are normalized by a factor $\frac{1}{\text{degree}(v)}$, so all
+neighbours have the same and it is essentially a mean, and in the version
+explained in the lectures, the normalization factor is
+$\frac{1}{\sqrt{\text{degree}(v) \cdot \sqrt{\text{degree}(u)}}}$, so the
+neighbours have different weights.
+
+In GATs, at least the mechanism described by Veličković et al., aggregation
+occurs by taking a weighted sum of the transformed feature embeddings of the
+neighboring nodes and it's own embeddings, where the weights are determined by
+an attention mechanism. So in this case the own embeddings are included in the
+weighted sum instead of being added separately.
+
+These weights are computed by calculating an attention score $e_{ij}$ for each
+neighbor $j$ of node $i$, and taking the softmax over these scores to get the
+attention weights $\alpha_{ij}$. The authors propose calculating the attention
+scores by concatenating the transformed embeddings of node $i$ and node $j$,
+and taking a dot product with a learnable weight vector $a$, followed by a
+LeakyReLU.
+
+So in summary in both GCNs and GATs aggregation is done by taking a sum over
+the neighboring feature values (transformed by some weight matrix), but in GCNs
+the sum is a regular mean and in GAT's this is a weighted mean. One other
+difference is that in GCNs the node's own transformed embedding is added
+separately after the mean, and in GAT's it is included in the weighted mean.
+
+\subsubsection*{(b)}
+
+It is a bit unclear whether what we wanna do is classify nodes (users) in the
+social graph as either normal users or bots/spam accounts, or that we want to
+recomment things to users and as a sidequest identify bots/spam accounts. I am
+assuming the first case, where we want to classify nodes as normal users or
+bots/spam accounts.
+
+In GCNs, all neighboring nodes contribute roughly equally to the updated
+embedding of a node, and in GATs, the contribution of neighboring nodes is
+weighted by attention weights.
+
+For this task I think being able to weight the contribution of neighboring
+nodes is very useful. Every user probably has some connected nodes, and some of
+these nodes could be bots/spam accounts. So for a normal user we would probably
+wanna ignore/downweight the contribution of these bot/spam accounts, and for a
+bot/spam account we would probably wanna ignore/downweight the contribution of
+normal users. But I find this question a bit unclear, because it would depend
+on the specifics of the graph and features and edges to be able to say
+something more concrete. I feel like the attention mechanism would help in most
+scenarios, but maybe there are some cases where the weighted sum isn't needed
+and the extra attention calculation restriction only harms performance. And in
+the end, what works better is something you would have to test empirically.
+
+\subsubsection*{(c)}
+
+The first advantage of using GATs over Transformers for tasks involving
+graph-structured data is that GATs are will be able to use the edge data in
+their calculations, while in standard transformers (like every node one token)
+the edges would have to be encoded in a fixed length feature vector, which is
+hard and probably not very effective. While in GAT's the edges are used
+directly in the attention mechanism (only neighbors are attended to, and other
+edge data could be incorporated in the attention mechanism).
+
+The second advantge is that GATs are more computationally efficient since they
+don't need to compute attention scores between all pairs of nodes, but only
+between neighboring nodes. This makes GATs scale better to larger graphs
+compared to regular transformers. The attention mechanism is probably also more
+effective since the neighboring nodes are probably more relevant than distant
+nodes.
+
+\subsubsection*{(d)}
+
+I have implemented the graph attention layer in the graphcnn file as instructed
+in the README.
+
+\subsubsection*{(e)}
+
+Still gotta wait for this. TODO
+
