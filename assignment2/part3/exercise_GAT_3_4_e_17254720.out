@@ -1,0 +1,23 @@
+============================================================================================== 
+Warning! Mixing Conda and module environments may lead to corruption of the
+user environment. 
+We do not recommend users mixing those two environments unless absolutely
+necessary. Note that 
+SURF does not provide any support for Conda environment.
+For more information, please refer to our software policy page:
+https://servicedesk.surf.nl/wiki/display/WIKI/Software+policy+Snellius#SoftwarepolicySnellius-UseofAnacondaandMinicondaenvironmentsonSnellius 
+
+Remember that many packages have already been installed on the system and can
+be loaded using 
+the 'module load <package__name>' command. If you are uncertain if a package is
+already available 
+on the system, please use 'module avail' or 'module spider' to search for it.
+============================================================================================== 
+Traceback (most recent call last):
+  File "/gpfs/home6/scur2553/uvadlc_practicals_2025/assignment2/part3/train.py", line 7, in <module>
+    from dataset import get_dataset, DataModule
+  File "/gpfs/home6/scur2553/uvadlc_practicals_2025/assignment2/part3/dataset.py", line 2, in <module>
+    from torch_geometric.loader import NeighborLoader
+ModuleNotFoundError: No module named 'torch_geometric'
+srun: error: gcn5: task 0: Exited with exit code 1
+srun: Terminating StepId=17254720.0
