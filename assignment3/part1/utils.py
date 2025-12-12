@@ -30,13 +30,16 @@ def sample_reparameterize(mean, std):
         z - A sample of the distributions, with gradient support for both mean and std.
             The tensor should have the same shape as the mean and std input tensors.
     """
-    assert not (std < 0).any().item(), "The reparameterization trick got a negative std as input. " + \
-                                       "Are you sure your input is std and not log_std?"
+    assert not (std < 0).any().item(), (
+        "The reparameterization trick got a negative std as input. "
+        + "Are you sure your input is std and not log_std?"
+    )
     #######################
     # PUT YOUR CODE HERE  #
     #######################
-    z = None
-    raise NotImplementedError
+
+    z = mean + std * torch.randn_like(std)
+
     #######################
     # END OF YOUR CODE    #
     #######################
@@ -58,8 +61,11 @@ def KLD(mean, log_std):
     #######################
     # PUT YOUR CODE HERE  #
     #######################
-    KLD = None
-    raise NotImplementedError
+
+    KLD = -0.5 * torch.sum(
+        1 + 2 * log_std - mean.pow(2) - torch.exp(2 * log_std), dim=-1
+    )
+
     #######################
     # END OF YOUR CODE    #
     #######################
@@ -78,8 +84,9 @@ def elbo_to_bpd(elbo, img_shape):
     #######################
     # PUT YOUR CODE HERE  #
     #######################
-    bpd = None
-    raise NotImplementedError
+
+    bpd = elbo / np.prod(img_shape[1:]) * np.log2(np.e)
+
     #######################
     # END OF YOUR CODE    #
     #######################
@@ -110,11 +117,28 @@ def visualize_manifold(decoder, grid_size=20):
     #######################
     # PUT YOUR CODE HERE  #
     #######################
-    img_grid = None
-    raise NotImplementedError
+
+    percentiles = torch.arange(0.5 / grid_size, 1, 1 / grid_size)
+    z1, z2 = torch.meshgrid(percentiles, percentiles, indexing='ij')
+    z1 = torch.reshape(z1, (-1,))
+    z2 = torch.reshape(z2, (-1,))
+    normal_dist = torch.distributions.Normal(0, 1)
+
+    z1_icdf = normal_dist.icdf(z1).unsqueeze(1)
+    z2_icdf = normal_dist.icdf(z2).unsqueeze(1)
+    z = torch.cat((z1_icdf, z2_icdf), dim=1)
+
+    outputs = decoder(z) # Shape: [grid_size**2, 16, H, W]
+    outputs = torch.softmax(outputs, dim=1) 
+
+    pixel_values = torch.arange(0, 16).to(outputs.device).view(1, 16, 1, 1)
+    outputs = torch.sum(outputs * pixel_values, dim=1, keepdim=True) # Shape: [grid_size**2, 1, H, W]
+    outputs = torch.clamp(outputs / 15.0, 0, 1)  # Normalize to [0, 1] for visualization
+
+    img_grid = make_grid(outputs, nrow=grid_size)
+
     #######################
     # END OF YOUR CODE    #
     #######################
 
     return img_grid
-
