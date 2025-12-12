@@ -1,0 +1,254 @@
+
+\section*{1 Variational Autoencoders}
+
+\subsection*{1.1}
+
+% Question 1.1 (2 points)
+% Given a decoder fθ , describe the steps needed to sample an image.
+
+\begin{itemize}
+    \item First you have to sample a $\textbf{z}$ from the prior distribution
+          $p(\textbf{z})$. So you must sample $\textbf{z} \sim \mathcal{N}(0, I)$.
+    \item Then you can pass this $\textbf{z}$ through the decoder $f_{\theta}$ to obtain
+          $\textbf{p}$, the parameters of the categorical distribution where every
+          $\textbf{p}_m = (p_{m,1}, p_{m,2}, \ldots, p_{m,k})$ represents the
+          probabilities of each pixel $m$ taking on each of the $K$ possible intensity
+          values.
+    \item Finally, you can sample from $p(\textbf{x}|\textbf{z})$ to obtain the generated
+          image $\textbf{x}$. Since all pixels are independent random variables, where
+          $p(\textbf{x}|\textbf{z}) = \prod_{m} p(\textbf{x}^{(m)}|\textbf{z}) =
+              \prod_{m} \text{Categorical}(\textbf{x}^{(m)}|\textbf{p}_m)$ you can sample
+          them separately from the categorical distribution. So for each pixel $m$, you
+          sample $\textbf{x}^{(m)} \sim \text{Categorical}(\textbf{p}_m)$, and that
+          $\textbf{x}_m$ is the pixel value at position $m$.
+\end{itemize}
+
+\subsection*{1.2}
+
+% Question 1.2 (3 points)
+% Although Monte-Carlo Integration with samples from p(zn) can be used to approximate logp(xn),it is not used for training VAE type of models, because it is inefficient. In a few sentences, describe why it is inefficient and how this efficiency scales with the dimensionality of z. (Hint: you may use Figure 2 in your explanation.)
+
+This is rather inefficient since every time you want to compute $\log
+    p(\textbf{x}_n)$, you have to calculate $p(\textbf{x}_n|\textbf{z}_n^{(s)})$
+for every sample $\textbf{z}_n^{(s)}$ drawn from the prior. And since we want
+to have a good approximation, $L$ has to be quite large. This means that for
+every data point $\textbf{x}_n$, we have to do $L$ forward passes through the
+decoder network $f_{\theta}$ to compute $p(\textbf{x}_n|\textbf{z}_n^{(s)})$.
+
+This is even more problematic when the dimensionality of $\textbf{z}$
+increases, not only because the computation for $f_{\theta}$ becomes more
+expensive, but also since then we would need to use an exponentially larger $L$
+to get the same approximation quality. An intuitive explanation for this can be
+seen in figure 2. If we'd have the same number of dots (samples) in the graph,
+but now it would be 3D instead of 2D, the dots would cover a much smaller
+portion of the space. The dots would be very sparse and spread out, this not
+summarizing the distribution well.
+
+Moreover, in figure 2 we can see that most of the samples of $\textbf{z}$ are
+in areas where $p(\textbf{x}_n|\textbf{z})$ is very small. So these samples
+contribute very little to the estimate of $p(\textbf{x}_n)$. A lot of samples
+are kind off wasted in this way. But when we increase the dimensionality of
+$\textbf{z}$, the number of samples that are wasted increase exponentially.
+Let's say that over any axis of $\textbf{z}$, only a fraction of $\epsilon$ of
+the values contribute significantly to $p(\textbf{x}_n|\textbf{z})$. Then in
+$d$ dimensions, only a fraction of $\epsilon^d$ of the samples will contribute
+significantly to the estimate of $p(\textbf{x}_n)$. So as $d$ increases, the
+number of samples that contribute significantly decreases exponentially,
+meaning that we need to increase $L$ exponentially to keep the same estimation
+quality.
+
+\subsection*{1.3}
+
+% Question 1.3 (2 points)
+% Explain how you can see from Equation 10 that the right hand side has to be a lower bound on the log-probability log p(xn)?
+
+Since the KL-divergence between two distributions is always non-negative, we
+know that
+
+\begin{align*}
+    \text{D}_{KL}(q(\textbf{z}_n|\textbf{x}_n) || p(\textbf{z}_n|\textbf{x}_n))                                                       & \geq 0                         \\
+    \log \, p(\textbf{x}_n) = \text{ELBO}(\textbf{x}_n) + \text{D}_{KL}(q(\textbf{z}_n|\textbf{x}_n) || p(\textbf{z}_n|\textbf{x}_n)) & \geq \text{ELBO}(\textbf{x}_n) \\
+    \Rightarrow \log \, p(\textbf{x}_n)                                                                                               & \geq \text{ELBO}(\textbf{x}_n)
+\end{align*}
+
+\subsection*{1.4}
+
+% Question 1.4 (2 points)
+% Describe what happens to the ELBO as the variational distribution q(zn|xn)
+% approaches the true posterior p(zn|xn)?
+
+When the variational distribution $q(\textbf{z}_n|\textbf{x}_n)$ approaches the
+true posterior $p(\textbf{z}_n|\textbf{x}_n)$, there are a couple of things
+that happen.
+
+First of all, by definition of the KL-divergence,
+$\text{D}_{KL}(q(\textbf{z}_n|\textbf{x}_n) || p(\textbf{z}_n|\textbf{x}_n))$
+approaches 0.
+
+\begin{align*}
+    \text{D}_{KL}(q(\textbf{z}_n|\textbf{x}_n) || p(\textbf{z}_n|\textbf{x}_n)) \to 0
+\end{align*}
+
+Because of this, from the equation in question 1.3 we can see that this means
+that the ELBO approaches $\log \, p(\textbf{x}_n)$. So as the variational
+distribution approaches the true posterior, the ELBO becomes a tighter and
+tighter lower bound on the log-probability $\log \, p(\textbf{x}_n)$.
+
+\begin{align*}
+    \log \, p(\textbf{x}_n) = \text{ELBO}(\textbf{x}_n) + \text{D}_{KL}(q(\textbf{z}_n|\textbf{x}_n) || p(\textbf{z}_n|\textbf{x}_n)) \\
+    \Rightarrow \text{ELBO}(\textbf{x}_n) \to \log \, p(\textbf{x}_n)
+\end{align*}
+
+Also, not only does the ELBO approach $\log \, p(\textbf{x}_n)$, but it also
+increases in value when the variational distribution approaches the true
+posterior.
+
+\begin{align*}
+    \text{ELBO}(\textbf{x}_n) = \log \, p(\textbf{x}_n) - \text{D}_{KL}(q(\textbf{z}_n|\textbf{x}_n) || p(\textbf{z}_n|\textbf{x}_n)) \\
+    \Rightarrow \text{ELBO}(\textbf{x}_n) \text{ increases}
+\end{align*}
+
+But we can't say that the marginal likelihood $\log \, p(\textbf{x}_n)$ will
+increase as well
+
+\begin{align*}
+    \log \, p(\textbf{x}_n) = \underbrace{\text{ELBO}(\textbf{x}_n)}_{\text{increases}} + \underbrace{\text{D}_{KL}(q(\textbf{z}_n|\textbf{x}_n) || p(\textbf{z}_n|\textbf{x}_n))}_{\text{decreases}}
+\end{align*}
+
+\subsection*{1.5}
+
+% Question 1.5 (2 points)
+% Explain shortly why the names reconstruction and regularization are appropriate
+% for these two losses.
+% (Hint: Suppose we use just one sample to approximate the expectation Eqφ(zn|xn)[pθ(xn|zn)] – as is common practice in VAEs.)
+
+\subsubsection*{Reconstruction Loss}
+
+The term reconstruction is appropriate for
+
+\begin{equation*}
+    \mathcal{L}^{\text{reconstruction}}_n = - \mathbb{E}_{q_{\phi}(\textbf{z}_n|\textbf{x}_n)}[\log \, p_{\theta}(\textbf{x}_n|\textbf{z}_n)]
+\end{equation*}
+
+since it measures how well the decoder is able to reconstruct an output given a
+latent variable $\textbf{z}_n$ sampled from the variational distribution
+$q_{\phi}(\textbf{z}_n|\textbf{x}_n)$.
+
+If we use just one sample to approximate the expectation, this means that we
+sample one $\textbf{z}_n$ from $q_{\phi}(\textbf{z}_n|\textbf{x}_n)$ and then
+compute the negative log likelihood $- \log \,
+    p_{\theta}(\textbf{x}_n|\textbf{z}_n)$ given this sampled $\textbf{z}_n$.
+
+\begin{align*}
+    \mathcal{L}^{\text{reconstruction}}_n & \approx - \log \, p_{\theta}(\textbf{x}_n|\textbf{z}_n) \quad \text{where} \quad \textbf{z}_n \sim q_{\phi}(\textbf{z}_n|\textbf{x}_n) \\
+                                          & = - \log \, \text{Categorical}(\textbf{x}_n|\textbf{p}) \quad \text{where} \quad \textbf{p} = f_{\theta}(\textbf{z}_n)
+\end{align*}
+
+The way we could minimize this loss is by making sure that the parameters
+$\phi$ and $\theta$ are such that when we sample $\textbf{z}_n$ from
+$q_{\phi}(\textbf{z}_n|\textbf{x}_n)$ (thus encoding the input image), and then
+reconstruct $\textbf{x}_n$ using $p_{\theta}(\textbf{x}_n|\textbf{z}_n)$, the
+reconstructed image should have a high probability under the model.
+
+So this reconstruction part makes sure the model is able to encode and decode
+the model well, thus justifying the name reconstruction loss, which would also
+be used in an autoencoder setting. It simply measures the models ability to
+reconstruct the input.
+
+\subsubsection*{Regularization Loss}
+
+The term regularization is appropriate for
+
+\begin{equation*}
+    \mathcal{L}^{\text{regularization}}_n = \text{D}_{KL}(q_{\phi}(\textbf{z}_n|\textbf{x}_n) || p(\textbf{z}_n))
+\end{equation*}
+
+Since this loss is only dependent on the parameters of the variational
+distribution $q_{\phi}(\textbf{z}_n|\textbf{x}_n)$, namely $\phi$. So it cannot
+really help with reconstructing the input, since it doesn't have any say over
+the decoder parameters $\theta$.
+
+What it does do, is make sure the variational distribution
+$q_{\phi}(\textbf{z}_n|\textbf{x}_n)$ is kept similar to a chosen prior
+distribution $p(\textbf{z}_n)$, usually a standard normal distribution.
+
+This has a regularizing effect on the model, it doesn't focus on the actual
+purpose of the model, but it makes sure the latent space has some desired
+properties. Just like in a similar way L2 regularization doesn't focus on
+reducing the training error, but it makes sure the weights don't become too
+large, thus having a regularizing effect on the model.
+
+\subsection*{1.6}
+
+% Question 1.6 (3 points)
+% The above derivation of closed form expression for the regularization term requires Gaussian prior and variational distributions. Assume that we want to model the prior p(z) with a more complex distribution — it is likely the closed form expression would not exist.
+% Keeping in mind that DKL(q(z|x)||p(z)) = Ez∼q(z|x)[logq(z|x)], propose an p(z)
+% alternative way of estimating the regularization term for a given sample xn.
+
+Since the KL-divergence is essentially just an expectation, we can do a regular
+Monte-Carlo estimation of the KL-divergence by sampling $\textbf{z}_n^{(s)}$
+from the variational distribution $q_{\phi}(\textbf{z}_n|\textbf{x}_n)$, and
+then computing the average of $\log \left(
+    \frac{q_{\phi}(\textbf{z}_n^{(s)}|\textbf{x}_n)}{p(\textbf{z}_n^{(s)})}
+    \right)$.
+
+\begin{align*}
+    \mathcal{L}^{\text{regularization}}_n
+     & = \text{D}_{KL}\bigl(q_{\phi}(\textbf{z}_n \mid \textbf{x}_n) \,\|\, p(\textbf{z}_n)\bigr)                                                                                                                                    \\
+     & = \mathbb{E}_{q_{\phi}(\textbf{z}_n \mid \textbf{x}_n)}\left[ \log \frac{q_{\phi}(\textbf{z}_n \mid \textbf{x}_n)}{p(\textbf{z}_n)} \right]                                                                                   \\
+     & \approx \frac{1}{L} \sum_{s=1}^{L} \left[ \log \frac{q_{\phi}(\textbf{z}_n^{(s)} \mid \textbf{x}_n)}{p(\textbf{z}_n^{(s)})} \right] \quad \text{where} \quad \textbf{z}_n^{(s)} \sim q_{\phi}(\textbf{z}_n \mid \textbf{x}_n)
+\end{align*}
+
+This way you don't need a closed from solution for the KL-divergence, you just
+estimate it by sampling. Now the only requirement is that you can sample from
+the variational distribution and that both this distribution and the prior can
+be evaluated to compute the logarithms.
+
+\subsection*{1.7}
+
+% Question 1.7 (2 points)
+% Passing the derivative through samples can be done using the reparameterization trick — the process of sampling z directly from N (μ(x), Σ(x)) is commonly replaced by calculating z = Σ(x)ε + μ(x), where ε ∼ N (0, 1). In a few sentences, explain why the act of direct way of sampling usually prevents us from computing ∇φL, and how the reparameterization trick solves this problem.
+
+To update the parameters $\phi$ of the encoder we need to compute the gradient
+of the loss with respect to $\phi$, so we need to compute $\frac{\partial
+        \mathcal{L}_n}{\partial \phi}$. We'd do this by using the chain rule
+
+\begin{equation*}
+    \frac{\partial \mathcal{L}_n}{\partial \phi}
+    =
+    \frac{\partial \mathcal{L}_n}{\partial \boldsymbol{z}_n}
+    \,
+    \frac{\partial \boldsymbol{z}_n}{\partial \boldsymbol{\zeta}_n}
+    \,
+    \frac{\partial \boldsymbol{\zeta}_n}{\partial \phi}.
+\end{equation*}
+
+Where $\boldsymbol{\zeta}_n$ are the parameters of the variational distribution
+outputted by the encoder. The first and the last term of these equations are
+not really special and can be computed normally. The problem lies in the middle
+term $\frac{\partial \boldsymbol{z}_n}{\partial \boldsymbol{\zeta}_n}$. Since
+$\boldsymbol{z}_n$ is sampled from the distribution parameterized by
+$\boldsymbol{\zeta}_n$, this means we have to find the derivative of the
+sampling operation?
+
+\begin{equation*}
+    \boldsymbol{z}_n = \boldsymbol{z'}_n \quad \text{where} \quad \boldsymbol{z'}_n \sim p(\boldsymbol{\zeta}_n)
+\end{equation*}
+
+The sampling operation is as far as I know not a differentiable operation, so
+we cannot compute this derivative.
+
+But we can when we use the reparameterization trick. By expressing
+$\boldsymbol{z}_n$ as a deterministic function of $\boldsymbol{\zeta}_n$ and
+some noise variable $\boldsymbol{\epsilon}$ that is independent of
+$\boldsymbol{\zeta}_n$, we canrewrite the sampling operation in a way that
+makes it differentiable. For a Gaussian latent variable, we can express
+$\boldsymbol{z}_n$ as
+
+\begin{equation*}
+    \boldsymbol{z}_n = \boldsymbol{\mu}(\textbf{x}_n) + \boldsymbol{\sigma}(\textbf{x}_n) \odot \boldsymbol{\epsilon}, \quad \text{where} \quad \boldsymbol{\epsilon} \sim \mathcal{N}(0, I).
+\end{equation*}
+
+So now we dont have to compute any derivative of a sampling operation, to get
+the middle term of the chain rule. We now just have to derivate regular old
+additions and multiplications.
