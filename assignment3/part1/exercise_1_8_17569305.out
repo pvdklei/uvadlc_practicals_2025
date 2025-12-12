@@ -1,0 +1,80 @@
+============================================================================================== 
+Warning! Mixing Conda and module environments may lead to corruption of the
+user environment. 
+We do not recommend users mixing those two environments unless absolutely
+necessary. Note that 
+SURF does not provide any support for Conda environment.
+For more information, please refer to our software policy page:
+https://servicedesk.surf.nl/wiki/display/WIKI/Software+policy+Snellius#SoftwarepolicySnellius-UseofAnacondaandMinicondaenvironmentsonSnellius 
+
+Remember that many packages have already been installed on the system and can
+be loaded using 
+the 'module load <package__name>' command. If you are uncertain if a package is
+already available 
+on the system, please use 'module avail' or 'module spider' to search for it.
+============================================================================================== 
+Downloading http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz
+Failed to download (trying next):
+HTTP Error 404: Not Found
+
+Downloading https://ossci-datasets.s3.amazonaws.com/mnist/train-images-idx3-ubyte.gz
+Downloading https://ossci-datasets.s3.amazonaws.com/mnist/train-images-idx3-ubyte.gz to ../data/MNIST/raw/train-images-idx3-ubyte.gz
+  0%|          | 0.00/9.91M [00:00<?, ?B/s]  1%|          | 65.5k/9.91M [00:00<00:27, 364kB/s]  4%|▎         | 360k/9.91M [00:00<00:08, 1.10MB/s] 15%|█▍        | 1.44M/9.91M [00:00<00:02, 3.29MB/s] 51%|█████     | 5.05M/9.91M [00:00<00:00, 11.9MB/s]100%|█████████▉| 9.86M/9.91M [00:00<00:00, 17.7MB/s]100%|██████████| 9.91M/9.91M [00:00<00:00, 11.9MB/s]
+Extracting ../data/MNIST/raw/train-images-idx3-ubyte.gz to ../data/MNIST/raw
+
+Downloading http://yann.lecun.com/exdb/mnist/train-labels-idx1-ubyte.gz
+Failed to download (trying next):
+HTTP Error 404: Not Found
+
+Downloading https://ossci-datasets.s3.amazonaws.com/mnist/train-labels-idx1-ubyte.gz
+Downloading https://ossci-datasets.s3.amazonaws.com/mnist/train-labels-idx1-ubyte.gz to ../data/MNIST/raw/train-labels-idx1-ubyte.gz
+  0%|          | 0.00/28.9k [00:00<?, ?B/s]100%|██████████| 28.9k/28.9k [00:00<00:00, 312kB/s]
+Extracting ../data/MNIST/raw/train-labels-idx1-ubyte.gz to ../data/MNIST/raw
+
+Downloading http://yann.lecun.com/exdb/mnist/t10k-images-idx3-ubyte.gz
+Failed to download (trying next):
+HTTP Error 404: Not Found
+
+Downloading https://ossci-datasets.s3.amazonaws.com/mnist/t10k-images-idx3-ubyte.gz
+Downloading https://ossci-datasets.s3.amazonaws.com/mnist/t10k-images-idx3-ubyte.gz to ../data/MNIST/raw/t10k-images-idx3-ubyte.gz
+  0%|          | 0.00/1.65M [00:00<?, ?B/s]  4%|▍         | 65.5k/1.65M [00:00<00:04, 357kB/s] 22%|██▏       | 360k/1.65M [00:00<00:01, 1.09MB/s] 89%|████████▉ | 1.47M/1.65M [00:00<00:00, 3.36MB/s]100%|██████████| 1.65M/1.65M [00:00<00:00, 2.98MB/s]
+Extracting ../data/MNIST/raw/t10k-images-idx3-ubyte.gz to ../data/MNIST/raw
+
+Downloading http://yann.lecun.com/exdb/mnist/t10k-labels-idx1-ubyte.gz
+Failed to download (trying next):
+HTTP Error 404: Not Found
+
+Downloading https://ossci-datasets.s3.amazonaws.com/mnist/t10k-labels-idx1-ubyte.gz
+Downloading https://ossci-datasets.s3.amazonaws.com/mnist/t10k-labels-idx1-ubyte.gz to ../data/MNIST/raw/t10k-labels-idx1-ubyte.gz
+  0%|          | 0.00/4.54k [00:00<?, ?B/s]100%|██████████| 4.54k/4.54k [00:00<00:00, 26.0MB/s]
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+HPU available: False, using: 0 HPUs
+[rank: 0] Seed set to 42
+You are using a CUDA device ('NVIDIA A100-SXM4-40GB MIG 3g.20gb') that has Tensor Cores. To properly utilize them, you should set `torch.set_float32_matmul_precision('medium' | 'high')` which will trade-off precision for performance. For more details, read https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html#torch.set_float32_matmul_precision
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+
+  | Name    | Type       | Params | Mode 
+-----------------------------------------------
+0 | encoder | CNNEncoder | 189 K  | train
+1 | decoder | CNNDecoder | 157 K  | train
+-----------------------------------------------
+347 K     Trainable params
+0         Non-trainable params
+347 K     Total params
+1.388     Total estimated model params size (MB)
+15        Modules in train mode
+0         Modules in eval mode
+SLURM auto-requeueing enabled. Setting signal handlers.
+Extracting ../data/MNIST/raw/t10k-labels-idx1-ubyte.gz to ../data/MNIST/raw
+
+[INFO] The progress bar has been suppressed. For updates on the training progress, check the TensorBoard file at VAE_logs/lightning_logs/version_17569305. If you want to see the progress bar, use the argparse option "progress_bar".
+
+`Trainer.fit` stopped: `max_epochs=80` reached.
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+SLURM auto-requeueing enabled. Setting signal handlers.
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+       Test metric             DataLoader 0
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+        test_bpd            0.5442261099815369
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
