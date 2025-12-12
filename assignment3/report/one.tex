@@ -252,3 +252,124 @@ $\boldsymbol{z}_n$ as
 So now we dont have to compute any derivative of a sampling operation, to get
 the middle term of the chain rule. We now just have to derivate regular old
 additions and multiplications.
+
+\subsection*{1.8}
+
+% Question 1.8 (12 points)
+% Build a Variational Autoencoder in the provided templates, and train it on the MNIST dataset. Both the encoder and decoder should be implemented as a CNN. For the architecture, you can use the same as used in Tutorial 9 about Autoencoders. Note that you have to adjust the output shape of the decoder to output 1 × 28 × 28 for MNIST. You can do this by adjusting the output padding of the first transposed convolution in the decoder. Use a latent space size of z_dim=20. Read the provided README to become familiar with the code template.
+% In your submission, plot the estimated bit per dimension score of the lower bound on the training and validation set as training progresses, and the final test score. You are allowed to take screenshots of a TensorBoard plot if the axes values are clear.
+% Note: using the default hyperparameters is sufficient to obtain full points. As a reference, the training loss should start at around 4 bpd, reach below 2.0 after 2 epochs, and end around 0.52 after 80 epochs.
+
+I got a final test score of 0.5442 bits per dimension. Note that I did not
+exactly copy the architecture from tutorial 9, but the question seems to
+indicate that this is allowed. Results are similar though.
+
+These are the training (first) and validation (second) bit per dimension plots
+from TensorBoard:
+
+\begin{center}
+    \includegraphics[width=0.8\textwidth]{imgs/1.8_train_bpd.png}
+\end{center}
+
+\begin{center}
+    \includegraphics[width=0.8\textwidth]{imgs/1.8_val_bpd.png}
+\end{center}
+
+\subsection*{1.9}
+
+% Question 1.9 (3 points)
+% Plot 64 samples (8 × 8 grid) from your model at three points throughout training (before training, after training 10 epochs, and after training 80 epochs). You should observe an improvement in the quality of samples. Describe shortly the quality
+% and/or issues of the generated images.
+
+Still gotta wait for 1.8 to finish. Will add the images and description as soon
+as possible.
+
+\subsection*{1.10}
+
+% Question 1.10 (4 points)
+% Train a VAE with a 2-dimensional latent space (z_dim=2 in the code). Use this VAE to plot the data manifold as is done in Figure 4b of [Kingma and Welling, 2014] and was discussed in Lecture 6. This is achieved by taking a two dimensional grid of points in Z-space, and plotting fθ(Z) = μ|Z. Use the percent point function (ppf, or the inverse CDF) to cover the part of Z-space that has significant density. Implement it in the function visualize_manifold in utils.py, and use a grid size of 20. Are you recognizing any patterns of the positions of the different digits?
+
+This is also currently training.
+
+\subsection*{1.11}
+
+% Question 1.11 (Bonus 3 points)
+% What do you think will happen to latent representations as we increase β?
+% Hint: β-VAEs were first introduced in https: // openreview. net/ pdf? id= Sy2fzU9gl. Their main properties are discussed in page 3 and section 2. Do not worry if you don’t understand all details, it is enough to have a high level idea of what is going on.
+
+I think that increasing $\beta$ will lead to the loss being dominated more by
+the regularization term. This will lead to the latent representations being
+more similar to the prior distribution, since the regularization term makes
+sure the variational distribution is similar to the prior. So, as we increase
+$\beta$, the values for $\textbf{z}$ will likely have a mean closer to 0 and a
+variance closer to 1, and will have a probability distribution closer to a
+standard normal distribution, since that's the prior we are using.
+
+The paper suggests this too, and they give some more reasoning behind it. Since
+increasing $\beta$ increases the importance of the KL-divergence term in the
+loss, it will force every dimension separately to be more similar to the prior.
+
+\begin{align*}
+    \mathcal{L}^{reg} & = \text{D}_{KL}(q_{\phi}(\textbf{z}|\textbf{x}) || p(\textbf{z}))  \\
+                      & = \sum_{i=1}^{d} \text{D}_{KL}(q_{\phi}(z_i|\textbf{x}) || p(z_i))
+\end{align*}
+
+But when the KL-divergence for some dimension $j$ zero, it also means that that
+dimension $z_j$ is completely useless, and that it stores no information about
+the input image, because the mutual information between $x$ and $z_j$ is zero,
+meaning that $x$ and $z_j$ are independent.
+
+\begin{align*}
+    \text{D}_{KL}(q_{\phi}(z_j|\textbf{x}) || p(z_j)) & = 0     \\
+    I(x; z_j)                                         & = 0     \\
+    z_j                                               & \perp x
+\end{align*}
+
+Because of this the authors argue that increasing $\beta$ will force the model
+to use a latent representation with a lower total information capacity. So less
+information about the image will be stored in the same number of latent
+dimensions.
+
+Moreover, their results indicate that the latent dimensions will also have an
+uneven information capacity. Where some dimensions will have high $KL(q(z|x) ||
+    p(z))$ values (store most information), and others will have very low values
+(are useless for reconstructing the image). So in the case that some dimension
+$i$ has a high divergence from the prior, then $x$ has a lot of influence on
+$z_i$, so that dimension stores a lot of information about the image and has
+got a high mutual information $I(x; z_i)$. But when the divergence on some
+dimension $j$ is low, for instance zero, then $x$ has no influence on $z_j$,
+therefore $I(x; z_j) = 0$ and $x \perp z_j$, so that dimension $z_j$ does not
+store any information about the image.
+
+This uneven information spread is likely because the model can't afford to
+store the same information in multiple dimensions, i.e., creating dependence
+between latent dimensions so that some $z_i \not\!\perp z_j$. Capturing
+information in multiple dimensions like this would be suboptimal (you've stored
+the same info twice if two dimensions are correlated) use of the limited
+information capacity. So since increasing $\beta$ will push the model to use
+less information capacity, an easy way to do this is to make sure that the
+latent dimensions are independent, so that each dimension has to store unique
+information about the image.
+
+So increasing $\beta$ will lead to the latent representations being more
+disentangled.. Meaning that different dimensions of the latent space will
+represent more cleanly differentiated features of the data, and this can be
+seen in the learned representation. So one dimension might represent the more
+of the smile of a person, and another dimension might represent the angle of
+the head. In our case of MNIST digits, one dimension might represent some
+specific aspect of the digit, and another dimension might represent something
+else typical for digits. The reasoning behind this is that since you force the
+latent representations to be more similar to the prior, and the prior is
+independent over the different dimensions, the latent representations will also
+become more independent over the different dimensions. Thus giving clearer
+roles/functions to all the latent dimensions.
+
+So increasing $\beta$ will penalize the model more for using a suboptimal
+encoding strategy, forcing the model to encode the images in a more optimal
+way, and the model seems to do this by creating more disentangled/independent
+latent representations, and having an uneven/sparser information capacity over
+the different latent dimensions. Lastly the authors state that there is an end
+to punishing the model for using too much information, since at some point the
+model will underfit because it is more important to keep the latent
+representations similar to the prior than to reconstruct the image well.
+
