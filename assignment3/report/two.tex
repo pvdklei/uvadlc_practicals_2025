@@ -1,0 +1,113 @@
+\newpage
+\section*{2 Adversarial Attacks}
+
+\subsection*{2.1}
+
+% Question 2.1 (10 points)
+% (4 points) In adversarial_attack.py, implement the fgsm_attack function, and implement the FGSM part in test_attack. For a pretrained ResNet18, compute the accuracy on the test set with and without the FGSM attack. You can use the train.py for this, report the accuracies and the configuration you used. In addition, answer the following questions:
+% • (2 points) Why would adding a random perturbation with size ε not have a similar effect as a FGSM perturbation of the same size?
+% • (2 points) Say we split the training data into two sets A and B, and train models A and B on those datasets, respectively. Then, we have two models trained for the same task but using different subsets of the same dataset. Now for an instance x in the test set, a perturbation built using the gradients from model A, will likely have a similar effect on model B, even though the models don’t share weights or the exact training data. What is likely to be the cause of this phenomenon?
+% • (2 points) What is the effect on using data augmentation compared to using no data augmentation, how would you explain this effect?
+% Hint: Optionally you can run an experiment by training with and without augmentations using the augmentations implemented in utils.py
+% Note: you can leave hyperparameters as they are, but feel free to experiment to get a better idea what is happening, try the visualise flag for example. (What do you think would happen if we increase ε ?) Or you can try using a pretrained resnet, instead of training from scratch.
+
+I have implemented all the code, and ran the experiments using a pretrained
+ResNet18 model. Without any adversarial attack the model got an accuracy of
+93\%. Using $\alpha=0.5$ and $\epsilon=0.1$ for the FGSM attack, the accuracy
+dropped to about 44\%.
+
+\par\medskip
+
+The reason why adding a random perturbation would not have a similar effect is
+because of the same reason that adding random noise to the parameters of a
+trained neural network does in general train the network the same way as doing
+actual gradient descent. The FGSM attack specifically uses the gradient of the
+loss with respect to the input data, so it can change the input data in the
+direction that will most increase the loss (gradient ascent).
+
+Though random perturbations could cause the model to misclassify the input,
+it's less likely than when doing it in an informed/targeted way using the
+gradient information. Similarly when you add random noise to some parameters
+there is a chance that the loss will decrease (especially when the network
+hasn't been trained yet I guess), but it will not be as effective as a
+structured science based method.
+
+\par\medskip
+
+I think the likely cause of this phenomenon is that both models A and B have
+been trained on similar data distributions, and therefore have learned the
+similar data distributions $p(x)$, the same class conditional distributions
+$p(y|x)$. It's not the exact same data of course, but if both this was a random
+split of the same dataset then both models will still have similar learned
+features. The main difference between $p_A(y|x)$ and $p_B(y|x)$ will be their
+parameters, so their actual computation to get to the output is a bit
+different, but they will still be similar distributions, $p_A(y|x) \approx
+    p_B(y|x)$. So their gradients with respect to the input data will also be
+similar. So as long as that's true (the gradients are similar), it doesn't
+matter whatever parameters are used to compute the outputs and gradients, the
+perturbation will still have a similar effect on both models.
+
+\par\medskip
+
+Since the experiment is optional I'll take a guess at this. Data augmentation
+generally adds more invariances to the model, e.g., a rotated image of a cat is
+still a cat, or an image with some noise added is still the same object. And
+usually the model will learn to be more robust to changes like this. Since
+adversarial attacks also just add some perturbations to the input image,
+without changing the actual object in the image, I think data augmentation will
+help the model be more robust to adversarial attacks as well. Especially when
+you use augmentations that do something similar, like adding some noise to the
+image. Or perhaps just augment with the actual adversarial attack strategy!
+
+\subsection*{2.2}
+
+% Question 2.2 (5 points)
+% (3 points) Also train a ResNet18 using this modified loss, this can be done by implementing the fgsm_loss function, and calling the necessary configuration in train.py. Report the accuracies with and without attacks, of the models with and without the defense.
+% Hint: You should see improvements for the defense, but expect it to still perform significantly worse on attacked examples than on normal examples.
+% Hint: Try it using pretraining and augmentation, in which case does the defense work significantly?
+% • (2 point) Describe the tradeoff between defending against the attack or not, why does this tradeoff occur?
+
+I have implemented the modified loss, but I sadly haven't tested it out on all
+the different configurations. But my guess is that using the adversarial loss
+will make the base accuracy a little bit worse, but the effect of the
+adversarial attack will be less severe. But still noticably worse than the base
+accuracy. So this is where the tradeoff is coming from: by making the model
+more robust to adversarial attacks, it will likely have a slightly worse
+performance on the clean data. This tradeoff occurs because the model has to
+learn to be robust to perturbations, which may make it less optimal for the
+clean data.
+
+\subsection*{2.3}
+
+% Question 2.3 (10 points)
+% (5 points) Implement the pgd_attack function in adversarial_attack.py, and the PGD section in test_attack. Moreover, for the defense implement adding adversarial examples to the batch in train in utils.py.
+% • (3 points) In this implementation, how do "using an adversarial loss" and "adding adversarial examples to the batch" compare? Are they equivalent or different? Provide reasoning for your answer, including under what conditions
+% they might align or diverge.
+% • (2 points) Describe a tradeoff between using FGSM and PGD. For each
+% method, identify one advantage it has over the other.
+
+I have implemented the PGD attack and the adversarial training defense using
+PGD examples. Using $\alpha=0.01$, $\epsilon=0.1$ and 10 iterations (the new
+defaults) for the PGD attack, the pretrained ResNet18 model's accuracy dropped
+to 8\% on the attacked test set. Without the attack the accuracy was 93\%.
+
+\par\medskip
+
+Using an adversarial loss and adding adversarial examples to the batch are
+similar and can be equivalent. It was a bit unclear whether we had to replace
+all original images with perturbed images, or add perturbed images to the batch
+or replace only a few, so in my implementation I just made the batch twice as
+large by adding a perturbed version of each image to the batch.
+
+But, if you would replace all original images with perturbed images, instead of
+concatting them to the batch, then this would be the exact same as changing the
+loss function, since the loss formula would imply replacing all original images
+with the perturbed images, and taking the loss on those.
+
+\par\medskip
+
+The tradeoff between using FGSM and PGD is speed versus effectiveness. FGSM is
+a single-step attack, so I guess that saves some compute time compared to PGD
+which has to do multiple iterations. But on the other hand PGD works better,
+like the results showed (8\% accuracy versus 44\% accuracy). So if you need
+quality, then PGD is better, but if you need speed, then FGSM is better.

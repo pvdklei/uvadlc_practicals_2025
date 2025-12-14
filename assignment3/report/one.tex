@@ -241,17 +241,21 @@ we cannot compute this derivative.
 But we can when we use the reparameterization trick. By expressing
 $\boldsymbol{z}_n$ as a deterministic function of $\boldsymbol{\zeta}_n$ and
 some noise variable $\boldsymbol{\epsilon}$ that is independent of
-$\boldsymbol{\zeta}_n$, we canrewrite the sampling operation in a way that
-makes it differentiable. For a Gaussian latent variable, we can express
-$\boldsymbol{z}_n$ as
+$\boldsymbol{\zeta}_n$, we can rewrite the sampling operation in a way that
+makes it differentiable. For a Gaussian latent variable, where
+$\boldsymbol{\zeta}_n = (\boldsymbol{\mu}(\textbf{x}_n),
+    \boldsymbol{\sigma}(\textbf{x}_n))$ we can express $\boldsymbol{z}_n$ as
 
 \begin{equation*}
     \boldsymbol{z}_n = \boldsymbol{\mu}(\textbf{x}_n) + \boldsymbol{\sigma}(\textbf{x}_n) \odot \boldsymbol{\epsilon}, \quad \text{where} \quad \boldsymbol{\epsilon} \sim \mathcal{N}(0, I).
 \end{equation*}
 
-So now we dont have to compute any derivative of a sampling operation, to get
-the middle term of the chain rule. We now just have to derivate regular old
-additions and multiplications.
+Where $\boldsymbol{\epsilon}$ is a noise variable that is independent of
+$\boldsymbol{\zeta}_n$ and has a standard normal distribution. $\odot$ is the
+element-wise multiplication operator. So now we dont have to compute any
+derivative of a sampling operation, to get the middle term of the chain rule.
+We now just have to derivate regular old fashioned additions and multiplications.
+multiplications.
 
 \subsection*{1.8}
 
@@ -264,15 +268,12 @@ I got a final test score of 0.5442 bits per dimension. Note that I did not
 exactly copy the architecture from tutorial 9, but the question seems to
 indicate that this is allowed. Results are similar though.
 
-These are the training (first) and validation (second) bit per dimension plots
+These are the training (left) and validation (right) bit per dimension plots
 from TensorBoard:
 
 \begin{center}
-    \includegraphics[width=0.8\textwidth]{imgs/1.8_train_bpd.png}
-\end{center}
-
-\begin{center}
-    \includegraphics[width=0.8\textwidth]{imgs/1.8_val_bpd.png}
+    \includegraphics[width=0.4\textwidth]{imgs/1.8_train_bpd.png}
+    \includegraphics[width=0.4\textwidth]{imgs/1.8_val_bpd.png}
 \end{center}
 
 \subsection*{1.9}
@@ -281,15 +282,82 @@ from TensorBoard:
 % Plot 64 samples (8 × 8 grid) from your model at three points throughout training (before training, after training 10 epochs, and after training 80 epochs). You should observe an improvement in the quality of samples. Describe shortly the quality
 % and/or issues of the generated images.
 
-Still gotta wait for 1.8 to finish. Will add the images and description as soon
-as possible.
+Below you can see samples from the model at three points during training:
+before training, after 10 epochs, and after 80 epochs, from left to right.
+
+In the first image you can see that the samples are just like random noise,
+there is no structure at all. This is expected since the model hasn't learned
+anything yet. What I do notice compared to the later samples, is that at this
+point the samples still contains gray values, though in the later samples the
+model seems to have figured out that it only needs to generate black and white
+pixels.
+
+In the second and third image you can clearly see shapes that more or less
+resemble digits. And between the two, you can also see some improvement in
+quality going from 10 to 80 epochs. Namely,
+
+\begin{itemize}
+    \item Less noise and artifacts. No random pixels or blobs here and there.
+    \item The white segments are bigger and more connected, less small loose segments.
+          Any real digit consists of one or a few connected white segments, not a lot of
+          small loose parts, so this is an improvement.
+    \item The lines look thinner and more clean. After 10 epochs the lines seem a bit
+          thicker.
+    \item Less bumps and irregularities along the outlines of the digits.
+    \item Overall the digits look more polished and refined.
+\end{itemize}
+
+There are also some things that seem to not have changed (a lot) in those 70
+extra epochs, namely,
+
+\begin{itemize}
+    \item The amount of nonsense digits seems about the same. Even though the digits look
+          cleaner after 80 epochs, I don't think the number of digits that can't be
+          identified has decreased.
+    \item The amount of clearly recognizable digits seems about the same. Again, even
+          though the digits look nicer and cleaner after 80 epochs, I don't think the
+          number of digits where I can easily say what digit it is has increased.
+    \item In both cases you see a lot of mixes of different digits. The ones where I
+          cannot really identify the digit often look like a mix of different digits.
+    \item The overall structure and layout of the digits seems to remain consistent. With
+          some extra bumps and artifacts perhaps, but it's not like the shape types have
+          changed.
+\end{itemize}
+
+\begin{center}
+    \includegraphics[width=0.3\textwidth]{imgs/1.9_epoch_0_samples.png}
+    \includegraphics[width=0.3\textwidth]{imgs/1.9_epoch_10_samples.png}
+    \includegraphics[width=0.3\textwidth]{imgs/1.9_epoch_80_samples.png}
+\end{center}
 
 \subsection*{1.10}
 
 % Question 1.10 (4 points)
 % Train a VAE with a 2-dimensional latent space (z_dim=2 in the code). Use this VAE to plot the data manifold as is done in Figure 4b of [Kingma and Welling, 2014] and was discussed in Lecture 6. This is achieved by taking a two dimensional grid of points in Z-space, and plotting fθ(Z) = μ|Z. Use the percent point function (ppf, or the inverse CDF) to cover the part of Z-space that has significant density. Implement it in the function visualize_manifold in utils.py, and use a grid size of 20. Are you recognizing any patterns of the positions of the different digits?
 
-This is also currently training.
+You can see some really nice patterns in the 2d latent space. It seems that the
+digit 1 has gotten the bottom left space, so where $z = (-, +)$ (assuming the
+image's y-axis is positive downwards), and the digit 0 seems to be in the top
+right space, where $z = (+, -)$. The digit 6 has clearly gotten $z = (+, +)$.
+For the area where $z = (-, -)$ it's more of a mix between different digits and
+this is also the area where the digits are most fuzzy and mixed up.
+
+But in general you can clearly see distinction between different digits in the
+latent space, and every digit seems to have gotten its own area in the latent
+space. Only in the boundaries between the different areas of digits there is
+some mixing of digits. Moreover, neighboring digits have similar shapes, for
+instance the 1's are next to the 7's (just one more line), and the 7's are next
+to the 9's (curve the added line). 0's are next to 6's, etc. The 8 seems to be
+more in the middle and bordering all other digits, which makes sense since it
+has features parts of all other digits in its shape. Remember how in a digital
+clock the 8 is the digit where all segments are lit up. In that sense the 8
+contains all other digits. 8 is also the digit that doesn't really have its own
+area, and is more scattered around the latent space. It also has the most fuzzy
+and distorted samples. Which makes sense given the reasoning above.
+
+\begin{center}
+    \includegraphics[width=0.5\textwidth]{imgs/1.10_vae_manifold.png}
+\end{center}
 
 \subsection*{1.11}
 

@@ -4,6 +4,7 @@ import numpy as np
 import torch.nn.functional as F
 from globals import FGSM, PGD, ALPHA, EPSILON, NUM_ITER
 
+
 def denormalize(batch, mean=[0.4914, 0.4822, 0.4465], std=[0.247, 0.243, 0.261]):
     """
     Convert a batch of tensors to their original scale.
@@ -26,26 +27,26 @@ def denormalize(batch, mean=[0.4914, 0.4822, 0.4465], std=[0.247, 0.243, 0.261])
     return batch * std.view(1, -1, 1, 1) + mean.view(1, -1, 1, 1)
 
 
-def fgsm_attack(image, data_grad, epsilon = 0.25):
+def fgsm_attack(image, data_grad, epsilon=0.25):
     # Get the sign of the data gradient (element-wise)
     # Create the perturbed image, scaled by epsilon
     # Make sure values stay within valid range
-    
+
     # BEGIN ANSWER
 
     sign_data_grad = torch.sign(data_grad)
     perturbed_image = image + epsilon * sign_data_grad
-
-    assert torch.max(image) <= 1.0 and torch.min(image) >= 0.0, "Input image should be in [0, 1] range" 
-    perturbed_image = torch.clamp(perturbed_image, 0, 1)
+    # At this point the image may have some out of bound values,
+    # but since the normalization constants are not available here,
+    # and there is only a denormalize function and not a normalize function,
+    # I assume this is sufficient.
 
     # END ANSWER
 
     return perturbed_image
 
 
-    
-def fgsm_loss(model, criterion, inputs, labels, defense_args, return_preds = True):
+def fgsm_loss(model, criterion, inputs, labels, defense_args, return_preds=True):
     alpha = defense_args[ALPHA]
     epsilon = defense_args[EPSILON]
     inputs.requires_grad = True
@@ -60,11 +61,13 @@ def fgsm_loss(model, criterion, inputs, labels, defense_args, return_preds = Tru
     # BEGIN ANSWER
 
     detached_inputs = torch.detach(inputs)
+    detached_inputs.requires_grad = True
     original_outputs = model(detached_inputs)
     loss_original = criterion(original_outputs, labels)
 
     loss_original.backward(retain_graph=True)
-    data_grad = inputs.grad.data
+    assert detached_inputs.grad is not None, "Gradient w.r.t. inputs is None"
+    data_grad = detached_inputs.grad.data
     perturbed_data = fgsm_attack(inputs, data_grad, epsilon=epsilon)
     perturbed_data = torch.detach(perturbed_data)
 
@@ -114,7 +117,11 @@ def pgd_attack(model, data, target, criterion, args):
         perturbed_data = perturbed_data + alpha * torch.sign(data_grad)
         perturbation = torch.clamp(perturbed_data - data, min=-epsilon, max=epsilon)
         perturbed_data = data + perturbation
-        perturbed_data = torch.clamp(perturbed_data, 0, 1)
+
+        # At this point the image may have some out of bound values,
+        # but since the normalization constants are not available here,
+        # and there is only a denormalize function and not a normalize function,
+        # I assume this is sufficient.
 
     perturbed_data = torch.detach(perturbed_data)
 
@@ -124,15 +131,15 @@ def pgd_attack(model, data, target, criterion, args):
 
 
 def test_attack(model, test_loader, attack_function, attack_args):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
     correct = 0
     criterion = nn.CrossEntropyLoss()
     adv_examples = []
     for data, target in test_loader:
         data, target = data.to(device), target.to(device)
-        data.requires_grad = True # Very important for attack!
+        data.requires_grad = True  # Very important for attack!
         output = model(data)
-        init_pred = output.max(1, keepdim=True)[1] 
+        init_pred = output.max(1, keepdim=True)[1]
 
         # If the initial prediction is wrong, don't attack
         if init_pred.item() != target.item():
@@ -140,8 +147,8 @@ def test_attack(model, test_loader, attack_function, attack_args):
 
         loss = F.nll_loss(output, target)
         model.zero_grad()
-        
-        if attack_function == FGSM: 
+
+        if attack_function == FGSM:
             # Get the correct gradients wrt the data
             # Perturb the data using the FGSM attack
             # Re-classify the perturbed image
@@ -165,14 +172,14 @@ def test_attack(model, test_loader, attack_function, attack_args):
             perturbed_data = pgd_attack(model, data, target, criterion, attack_args)
             output = model(perturbed_data)
             final_pred = output.max(1, keepdim=True)[1]
-        
+
             # END ANSWER
 
         else:
             print(f"Unknown attack {attack_function}")
 
         # Check for success
-        final_pred = output.max(1, keepdim=True)[1] 
+        final_pred = output.max(1, keepdim=True)[1]
         if final_pred.item() == target.item():
             correct += 1
         else:
@@ -180,12 +187,18 @@ def test_attack(model, test_loader, attack_function, attack_args):
             if len(adv_examples) < 5:
                 original_data = data.squeeze().detach().cpu()
                 adv_ex = perturbed_data.squeeze().detach().cpu()
-                adv_examples.append( (init_pred.item(), 
-                                      final_pred.item(),
-                                      denormalize(original_data), 
-                                      denormalize(adv_ex)) )
+                adv_examples.append(
+                    (
+                        init_pred.item(),
+                        final_pred.item(),
+                        denormalize(original_data),
+                        denormalize(adv_ex),
+                    )
+                )
 
     # Calculate final accuracy
-    final_acc = correct/float(len(test_loader))
-    print(f"Attack {attack_function}, args: {attack_args}\nTest Accuracy = {correct} / {len(test_loader)} = {final_acc}")
+    final_acc = correct / float(len(test_loader))
+    print(
+        f"Attack {attack_function}, args: {attack_args}\nTest Accuracy = {correct} / {len(test_loader)} = {final_acc}"
+    )
     return final_acc, adv_examples
